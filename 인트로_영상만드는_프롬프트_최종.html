@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>영상 프롬프트 생성기</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 40px; }
+        .header h1 {
+            font-size: 48px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -1px;
+            margin-bottom: 10px;
+        }
+        .header p { font-size: 14px; color: #888; margin-top: 8px; }
+        .card {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #ff8e53;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        textarea, input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,107,107,0.3);
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.3s;
+        }
+        textarea:focus, input:focus {
+            border-color: #ff6b6b;
+            box-shadow: 0 0 20px rgba(255,107,107,0.2);
+        }
+        textarea {
+            min-height: 180px;
+            resize: vertical;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+            color: white;
+            width: 100%;
+            padding: 15px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(255,107,107,0.4); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-copy {
+            background: rgba(255,107,107,0.2);
+            border: 1px solid rgba(255,107,107,0.3);
+            color: #ff8e53;
+            padding: 8px 15px;
+            font-size: 11px;
+        }
+        .btn-copy:hover { background: rgba(255,107,107,0.3); }
+
+        /* 업로드 영역 */
+        .upload-area {
+            border: 2px dashed rgba(255,107,107,0.4);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(255,107,107,0.03);
+            position: relative;
+        }
+        .upload-area:hover, .upload-area.drag-over {
+            border-color: #ff6b6b;
+            background: rgba(255,107,107,0.08);
+        }
+        .upload-area input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+        }
+        .upload-icon { font-size: 36px; color: #ff6b6b; margin-bottom: 10px; }
+        .upload-text { font-size: 14px; color: #aaa; line-height: 1.6; }
+        .upload-text span { color: #ff8e53; font-weight: 600; }
+
+        /* 이미지 프리뷰 */
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .preview-item {
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid rgba(255,107,107,0.3);
+            background: rgba(0,0,0,0.3);
+        }
+        .preview-item img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
+        .preview-label {
+            text-align: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: #ff8e53;
+            padding: 3px;
+            background: rgba(0,0,0,0.6);
+        }
+
+        /* 고정 문구 박스 */
+        .fixed-phrase-box {
+            background: rgba(255,107,107,0.1);
+            border: 1px solid rgba(255,107,107,0.5);
+            border-radius: 8px;
+            padding: 14px 18px;
+            font-size: 13px;
+            color: #ff8e53;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .fixed-phrase-box .phrase-text { color: #fff; font-weight: 700; }
+
+        .info-box {
+            background: rgba(255,107,107,0.07);
+            border-left: 3px solid #ff8e53;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #aaa;
+            line-height: 1.7;
+        }
+
+        .file-badge {
+            display: inline-block;
+            background: rgba(255,107,107,0.2);
+            border: 1px solid rgba(255,107,107,0.4);
+            color: #ff8e53;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        /* 출력 */
+        .output-section { display: none; }
+        .output-section.show { display: block; }
+        .scene-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,107,107,0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+        .scene-top {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 12px;
+        }
+        .scene-thumb {
+            width: 90px;
+            height: 52px;
+            border-radius: 6px;
+            object-fit: cover;
+            border: 1px solid rgba(255,107,107,0.3);
+            flex-shrink: 0;
+        }
+        .scene-meta { flex: 1; display: flex; justify-content: space-between; align-items: center; }
+        .scene-number { font-size: 16px; font-weight: 700; color: #ff6b6b; }
+        .scene-script {
+            font-size: 12px;
+            color: #888;
+            font-style: italic;
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 6px;
+            border-left: 2px solid rgba(255,107,107,0.4);
+        }
+        .scene-content {
+            font-size: 13px;
+            line-height: 1.8;
+            color: #ddd;
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 3px solid #ff8e53;
+            white-space: pre-wrap;
+        }
+        .progress-bar {
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            height: 8px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #ff8e53);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .status { text-align: center; font-size: 12px; color: #ff8e53; margin-bottom: 15px; }
+        .copy-section { display: flex; gap: 10px; margin-bottom: 20px; }
+        .copy-section button { flex: 1; }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #22c55e;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-size: 12px;
+            z-index: 9999;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .spinner {
+            display: inline-block;
+            width: 12px; height: 12px;
+            border: 2px solid rgba(255,107,107,0.3);
+            border-top-color: #ff6b6b;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1><i class="fas fa-film"></i> 영상 프롬프트 생성기</h1>
+        <p>이미지 + 대본 업로드 → 영상 제작용 한국어 프롬프트 자동 생성</p>
+    </div>
+
+    <div class="card">
+        <!-- API 키 -->
+        <div class="form-group">
+            <label><i class="fas fa-key"></i> Google Gemini API 키</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <input type="password" id="apiKey" placeholder="API 키를 입력하세요..." style="flex:1;" />
+                <button class="btn btn-copy" onclick="saveApiKey()" style="white-space:nowrap;padding:12px 16px;"><i class="fas fa-save"></i> 저장</button>
+            </div>
+            <div class="info-box">💡 API 키는 https://ai.google.dev/ 에서 무료로 생성할 수 있습니다. 저장 버튼을 누르면 다음에도 자동으로 불러옵니다.</div>
+        </div>
+
+        <!-- 고정 문구 안내 -->
+        <div class="fixed-phrase-box">
+            <i class="fas fa-lock"></i>
+            모든 프롬프트에 고정 포함 →
+            <span class="phrase-text">3D 픽사풍 일러스트레이션 스타일 그대로 유지. 자막넣기 금지.</span>
+        </div>
+
+        <!-- 이미지 업로드 -->
+        <div class="form-group">
+            <label><i class="fas fa-images"></i> 이미지 업로드 (PNG · 001~100장)</label>
+            <div class="upload-area" id="uploadArea">
+                <input type="file" id="imageFiles" accept="image/png,image/jpeg,image/webp" multiple onchange="handleFiles(this.files)" />
+                <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+                <div class="upload-text">
+                    클릭하거나 이미지를 드래그하세요<br>
+                    <span>파일명을 001.png, 002.png 순서로 저장하면 자동 정렬됩니다</span>
+                </div>
+            </div>
+            <div id="fileBadge" class="file-badge" style="display:none;"></div>
+            <div id="previewGrid" class="preview-grid"></div>
+        </div>
+
+        <!-- 대본 입력 -->
+        <div class="form-group">
+            <label><i class="fas fa-align-left"></i> 대본 (줄바꿈으로 구분)</label>
+            <textarea id="scriptInput" placeholder="한국경제가 난리가 났습니다
+우리는 지금 뭘 할까요?
+
+도대체 왜 이러는건지
+모르겠습니다
+정말 황당합니다
+
+빨리 피하십시요
+여러분 전쟁입니다"></textarea>
+            <div class="info-box">
+                📌 <b style="color:#ff8e53;">빈 줄(엔터 두 번)</b> = 장면 구분선<br>
+                한 단락(여러 줄 가능) = 이미지 1장과 자동 매칭<br>
+                001.png → 1번째 단락 &nbsp;|&nbsp; 002.png → 2번째 단락<br>
+                단락 수가 이미지보다 적으면 남은 이미지는 대본 없이 생성됩니다
+            </div>
+        </div>
+
+        <button class="btn btn-primary" id="generateBtn" onclick="generateVideoPrompts()">
+            <i class="fas fa-magic"></i> 영상 프롬프트 생성
+        </button>
+    </div>
+
+    <!-- 출력 섹션 -->
+    <div class="output-section" id="outputSection">
+        <div class="card">
+            <h2 style="color:#ff8e53;margin-bottom:20px;font-size:24px;">
+                <i class="fas fa-film"></i> 생성된 영상 프롬프트
+            </h2>
+            <div id="progressContainer" style="display:none;">
+                <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+                <div class="status" id="statusText">생성 중...</div>
+            </div>
+            <div class="copy-section" id="copyButtonSection" style="display:none;">
+                <button class="btn btn-copy" onclick="copyAllPrompts()"><i class="fas fa-copy"></i> 전체 복사</button>
+                <button class="btn btn-copy" onclick="downloadPrompts()"><i class="fas fa-download"></i> 다운로드</button>
+                <button class="btn btn-copy" onclick="downloadPromptsOnly()"><i class="fas fa-file-alt"></i> 프롬프트만 다운로드</button>
+            </div>
+            <div id="scenesContainer"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let uploadedFiles = [];
+    let generatedPrompts = [];
+    let promptsByScene = {};
+    let isGenerating = false;
+
+    // 드래그앤드롭
+    const uploadArea = document.getElementById('uploadArea');
+    uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+    uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+    uploadArea.addEventListener('drop', e => {
+        e.preventDefault();
+        uploadArea.classList.remove('drag-over');
+        handleFiles(e.dataTransfer.files);
+    });
+
+    function handleFiles(files) {
+        const arr = Array.from(files);
+        // 파일명 기준 자연 정렬 (001, 002...)
+        arr.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+        uploadedFiles = new Array(arr.length).fill(null);
+        document.getElementById('previewGrid').innerHTML = '';
+
+        const badge = document.getElementById('fileBadge');
+        badge.style.display = 'inline-block';
+        badge.textContent = `📁 ${arr.length}장 업로드됨`;
+
+        arr.forEach((file, i) => {
+            // 프리뷰 placeholder
+            const grid = document.getElementById('previewGrid');
+            const item = document.createElement('div');
+            item.className = 'preview-item';
+            item.id = `preview-${i}`;
+            item.innerHTML = `<div style="aspect-ratio:16/9;background:rgba(0,0,0,0.3);"></div><div class="preview-label">${file.name.replace(/\.[^.]+$/, '')}</div>`;
+            grid.appendChild(item);
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const dataUrl = e.target.result;
+                const base64 = dataUrl.split(',')[1];
+                uploadedFiles[i] = {
+                    name: file.name,
+                    base64,
+                    mimeType: file.type || 'image/png',
+                    objectUrl: dataUrl
+                };
+                // 프리뷰 이미지 삽입
+                const el = document.getElementById(`preview-${i}`);
+                if (el) el.innerHTML = `<img src="${dataUrl}" alt="${file.name}"><div class="preview-label">${file.name.replace(/\.[^.]+$/, '')}</div>`;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function generateVideoPrompts() {
+        const apiKey = document.getElementById('apiKey').value.trim();
+        if (!apiKey) { alert('API 키를 입력하세요!'); return; }
+        if (!uploadedFiles.length) { alert('이미지를 업로드하세요!'); return; }
+
+        // 로딩 완료 확인
+        const loaded = uploadedFiles.filter(f => f && f.base64);
+        if (loaded.length !== uploadedFiles.length) {
+            alert('이미지 로딩 중입니다. 잠시 후 다시 시도해주세요.'); return;
+        }
+
+        // 빈 줄 기준으로 단락 분리 (각 단락 = 이미지 1장)
+        const scriptLines = document.getElementById('scriptInput').value
+            .split(/\n\s*\n/)
+            .map(s => s.replace(/\n/g, ' ').trim())
+            .filter(s => s);
+
+        const generateBtn = document.getElementById('generateBtn');
+        generateBtn.disabled = true;
+        generateBtn.innerHTML = '<span class="spinner"></span> 생성 중... (취소하려면 새로고침)';
+        isGenerating = true;
+
+        document.getElementById('outputSection').classList.add('show');
+        document.getElementById('progressContainer').style.display = 'block';
+        document.getElementById('copyButtonSection').style.display = 'none';
+        document.getElementById('scenesContainer').innerHTML = '';
+
+        generatedPrompts = [];
+        promptsByScene = {};
+
+        const BATCH_SIZE = 3;
+        let completedCount = 0;
+
+        try {
+            for (let batchStart = 0; batchStart < uploadedFiles.length; batchStart += BATCH_SIZE) {
+                if (!isGenerating) break;
+
+                const batch = uploadedFiles.slice(batchStart, batchStart + BATCH_SIZE);
+                const batchNum = Math.floor(batchStart / BATCH_SIZE) + 1;
+                const totalBatches = Math.ceil(uploadedFiles.length / BATCH_SIZE);
+
+                document.getElementById('statusText').textContent =
+                    `생성 중... (묶음 ${batchNum}/${totalBatches}, 장면 ${batchStart+1}~${Math.min(batchStart+BATCH_SIZE, uploadedFiles.length)}/${uploadedFiles.length})`;
+
+                const batchResults = await Promise.all(
+                    batch.map(async (file, idx) => {
+                        const sceneIdx = batchStart + idx;
+                        const sceneNum = String(sceneIdx + 1).padStart(3, '0');
+                        const scriptLine = scriptLines[sceneIdx] || '';
+                        let videoPrompt = '';
+
+                        for (let attempt = 0; attempt < 3; attempt++) {
+                            try {
+                                videoPrompt = await generateSinglePrompt(apiKey, file, sceneNum, scriptLine);
+                                break;
+                            } catch(err) {
+                                console.warn(`장면 ${sceneNum} 시도 ${attempt+1} 실패:`, err.message);
+                                if (attempt < 2) await new Promise(r => setTimeout(r, 2000));
+                                else videoPrompt = `[생성 실패] ${err.message}`;
+                            }
+                        }
+                        return { number: sceneNum, videoPrompt, objectUrl: file.objectUrl, scriptLine };
+                    })
+                );
+
+                batchResults.forEach(result => {
+                    completedCount++;
+                    const progress = Math.round((completedCount / uploadedFiles.length) * 100);
+                    document.getElementById('progressFill').style.width = progress + '%';
+                    generatedPrompts.push(result);
+                    promptsByScene[result.number] = result.videoPrompt;
+                    addSceneToUI(result);
+                });
+
+                if (batchStart + BATCH_SIZE < uploadedFiles.length) {
+                    await new Promise(r => setTimeout(r, 2000));
+                }
+            }
+
+            if (isGenerating) {
+                document.getElementById('progressFill').style.width = '100%';
+                document.getElementById('statusText').textContent = '✅ 생성 완료!';
+                document.getElementById('copyButtonSection').style.display = 'flex';
+                showToast('✅ 모든 영상 프롬프트 생성 완료!');
+            }
+        } catch(error) {
+            console.error('❌ 오류:', error);
+            alert('오류 발생: ' + error.message);
+            document.getElementById('progressContainer').style.display = 'none';
+        } finally {
+            isGenerating = false;
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = '<i class="fas fa-magic"></i> 영상 프롬프트 생성';
+        }
+    }
+
+    async function generateSinglePrompt(apiKey, file, sceneNum, scriptLine) {
+        const systemText = `당신은 영상 프롬프트 전문 작성가입니다. 업로드된 이미지를 직접 분석하여 영상 제작용 프롬프트를 한국어로 작성합니다.
+
+필수 규칙:
+1. 반드시 한국어로만 작성하세요.
+2. 이미지의 배경, 캐릭터, 분위기, 소품을 정확히 묘사하세요.
+3. 캐릭터가 있으면 반드시 입술/입 움직임을 포함하세요. (예: "말하듯 입을 움직이며", "입술을 움직이며 설명하는")
+4. 대본 내용에 맞게 캐릭터의 표정과 제스처를 설정하세요. 기쁜 내용 → 활기찬 표정, 심각한 내용 → 진지한 표정
+5. 반드시 마지막에 이 문구를 포함하세요: "3D 픽사풍 일러스트레이션 스타일 그대로 유지. 자막넣기 금지. 루프."
+6. 150~200자 내외로 작성하세요.
+7. 프롬프트 텍스트만 출력하고 부연설명은 하지 마세요.`;
+
+        const fixedEnding = "3D 픽사풍 일러스트레이션 스타일 그대로 유지. 자막넣기 금지. 루프.";
+        const userText = scriptLine
+            ? `이 이미지를 분석하고, 아래 대본에 맞는 영상 프롬프트를 한국어로 작성해주세요.\n\n대본: "${scriptLine}"\n\n이미지 속 배경과 캐릭터의 동작·표정·조명·색감을 대본 분위기에 맞게 묘사하세요. 마지막 문장은 반드시 정확히 이 문구로 끝내세요: "${fixedEnding}"`
+            : `이 이미지를 분석하고 영상 프롬프트를 한국어로 작성해주세요. 마지막 문장은 반드시 정확히 이 문구로 끝내세요: "${fixedEnding}"`;
+
+        const body = {
+            system_instruction: { parts: [{ text: systemText }] },
+            contents: [{
+                parts: [
+                    { inline_data: { mime_type: file.mimeType, data: file.base64 } },
+                    { text: userText }
+                ]
+            }],
+            generationConfig: { temperature: 0.7, maxOutputTokens: 3000 }
+        };
+
+        const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+            { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+        );
+
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.error?.message || res.statusText);
+        }
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        if (!text) throw new Error('응답이 비어있습니다.');
+        return text.trim();
+    }
+
+    function addSceneToUI(result) {
+        const container = document.getElementById('scenesContainer');
+        const card = document.createElement('div');
+        card.className = 'scene-card';
+        card.innerHTML = `
+            <div class="scene-top">
+                <img class="scene-thumb" src="${result.objectUrl}" alt="장면 ${result.number}">
+                <div class="scene-meta">
+                    <div class="scene-number">장면 ${result.number}</div>
+                    <button class="btn btn-copy" onclick="copySingleScene('${result.number}')">
+                        <i class="fas fa-copy"></i> 복사
+                    </button>
+                </div>
+            </div>
+            ${result.scriptLine ? `<div class="scene-script">📝 대본: ${escapeHtml(result.scriptLine)}</div>` : ''}
+            <div class="scene-content">${escapeHtml(result.videoPrompt)}</div>
+        `;
+        container.appendChild(card);
+    }
+
+    function escapeHtml(text) {
+        const d = document.createElement('div');
+        d.textContent = text;
+        return d.innerHTML;
+    }
+
+    function copyAllPrompts() {
+        const full = generatedPrompts.map(p => `${p.number}. ${p.videoPrompt}`).join('\n\n');
+        navigator.clipboard.writeText(full.trim()).then(() => showToast('✅ 전체 프롬프트 복사됨!'));
+    }
+
+    function copySingleScene(num) {
+        navigator.clipboard.writeText(`${num}. ${promptsByScene[num]}`).then(() => showToast(`✅ 장면 ${num} 복사됨!`));
+    }
+
+    function downloadPrompts() {
+        const full = generatedPrompts.map(p => {
+            let line = `${p.number}. ${p.videoPrompt}`;
+            if (p.scriptLine) line = `[대본: ${p.scriptLine}]\n${line}`;
+            return line;
+        }).join('\n\n');
+        const blob = new Blob([full.trim()], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '영상_프롬프트_' + new Date().toISOString().split('T')[0] + '.txt';
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a); URL.revokeObjectURL(url);
+        showToast('✅ 파일 다운로드 시작!');
+    }
+
+    function downloadPromptsOnly() {
+        const full = generatedPrompts.map(p => p.videoPrompt).join('\n\n');
+        const blob = new Blob([full.trim()], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '영상_프롬프트_only_' + new Date().toISOString().split('T')[0] + '.txt';
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a); URL.revokeObjectURL(url);
+        showToast('✅ 프롬프트 파일 다운로드 시작!');
+    }
+
+    function saveApiKey() {
+        const key = document.getElementById('apiKey').value.trim();
+        if (!key) { showToast('⚠️ API 키를 먼저 입력하세요!'); return; }
+        localStorage.setItem('gemini_api_key', key);
+        showToast('✅ API 키 저장 완료!');
+    }
+
+    // 페이지 로드 시 저장된 API 키 불러오기
+    window.addEventListener('DOMContentLoaded', () => {
+        const saved = localStorage.getItem('gemini_api_key');
+        if (saved) document.getElementById('apiKey').value = saved;
+    });
+
+    function showToast(msg) {
+        const t = document.createElement('div');
+        t.className = 'toast'; t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 3000);
+    }
+</script>
+</body>
+</html>
