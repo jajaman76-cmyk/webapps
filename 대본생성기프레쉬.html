@@ -1,0 +1,1650 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 바이럴 콘텐츠 자동 생성기</title>
+    <script>
+        // Tailwind CDN 경고 차단 (스크립트 로드 전에 실행)
+        (function() {
+            const _w = console.warn.bind(console);
+            console.warn = (...a) => { if (String(a[0]).toLowerCase().includes('tailwind')) return; _w(...a); };
+        })();
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes pulse-border {
+            0%, 100% { border-color: #3b82f6; }
+            50% { border-color: #8b5cf6; }
+        }
+        .pulse-border {
+            animation: pulse-border 2s ease-in-out infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+        .shimmer {
+            background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+            background-size: 1000px 100%;
+            animation: shimmer 2s infinite;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        
+        <!-- Header -->
+        <div class="text-center mb-10">
+            <h1 class="text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-3">
+                🎬 바이럴 콘텐츠 자동 생성기
+            </h1>
+            <p class="text-gray-600 text-lg">주제만 입력하면 웹 검색부터 대본 작성까지 자동 완성!</p>
+        </div>
+
+        <!-- Main Input Card -->
+        <div class="bg-white rounded-2xl shadow-2xl p-8 mb-8">
+            <div class="space-y-6">
+                
+                <!-- 카테고리 선택 (대분류 → 소분류) -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">📚 카테고리 선택</label>
+
+                    <!-- 대분류 -->
+                    <div class="flex flex-wrap gap-2 mb-3">
+                        <button onclick="selectMain('economy')" id="main-economy" class="main-cat-btn px-4 py-2 rounded-full border-2 border-gray-200 text-sm font-semibold transition hover:border-blue-400 hover:bg-blue-50">💰 경제</button>
+                        <button onclick="selectMain('incident')" id="main-incident" class="main-cat-btn px-4 py-2 rounded-full border-2 border-gray-200 text-sm font-semibold transition hover:border-orange-400 hover:bg-orange-50">🚨 사건사고</button>
+                        <button onclick="selectMain('hotissue')" id="main-hotissue" class="main-cat-btn px-4 py-2 rounded-full border-2 border-gray-200 text-sm font-semibold transition hover:border-red-400 hover:bg-red-50">🔥 핫이슈</button>
+                        <button onclick="selectMain('society')" id="main-society" class="main-cat-btn px-4 py-2 rounded-full border-2 border-gray-200 text-sm font-semibold transition hover:border-purple-400 hover:bg-purple-50">🧠 사회/심리</button>
+                        <button onclick="selectMain('military')" id="main-military" class="main-cat-btn px-4 py-2 rounded-full border-2 border-gray-200 text-sm font-semibold transition hover:border-green-400 hover:bg-green-50">🪖 안보/방산</button>
+                        <button onclick="selectMain('history')" id="main-history" class="main-cat-btn px-4 py-2 rounded-full border-2 border-gray-200 text-sm font-semibold transition hover:border-yellow-400 hover:bg-yellow-50">📜 역사/인물</button>
+                        <button onclick="selectMain('korea')" id="main-korea" class="main-cat-btn px-4 py-2 rounded-full border-2 border-gray-200 text-sm font-semibold transition hover:border-rose-400 hover:bg-rose-50">🇰🇷 국뽕</button>
+                    </div>
+
+                    <!-- 소분류 (선택된 대분류에 따라 표시) -->
+                    <div id="subCatArea" class="hidden bg-gray-50 rounded-xl p-3">
+                        <p class="text-xs text-gray-500 mb-2">세부 카테고리를 선택하세요</p>
+                        <div id="subCatBtns" class="flex flex-wrap gap-2"></div>
+                    </div>
+
+                    <!-- 선택된 카테고리 표시 -->
+                    <div id="selectedCatBadge" class="mt-2 hidden">
+                        <span class="text-xs text-gray-500">선택됨: </span>
+                        <span id="selectedCatText" class="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-full"></span>
+                    </div>
+                </div>
+
+                <!-- 주제 추천 TOP5 -->
+                <div class="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <p class="font-semibold text-indigo-900">🔥 오늘의 주제 추천 TOP5</p>
+                            <p class="text-xs text-indigo-600">최신 이슈를 AI가 검색해서 추천해드려요</p>
+                        </div>
+                        <button onclick="fetchTopicRecommendations()" id="recommendBtn"
+                            class="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 transition">
+                            🔍 추천 받기
+                        </button>
+                    </div>
+                    <div id="topicRecommendations" class="space-y-2">
+                        <p class="text-sm text-indigo-400 text-center py-2">위 버튼을 눌러 최신 주제를 추천받으세요</p>
+                    </div>
+                </div>
+
+                <!-- 주제 입력 -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">📝 주제 입력 <span class="text-gray-400 font-normal">(직접 입력하거나 위에서 선택)</span></label>
+                    <input 
+                        type="text" 
+                        id="topicInput"
+                        placeholder="예: 삼성 HBM 가격 인상, 하버드 행복 연구, ChatGPT 최신 업데이트..."
+                        class="w-full px-6 py-4 text-lg border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition"
+                    />
+                    <p class="text-sm text-gray-500 mt-2">💡 팁: 구체적일수록 좋아요! (기업명, 인물명, 숫자 포함)</p>
+                </div>
+
+                <!-- Google API 키 입력 (필수) -->
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg space-y-3">
+                    <label class="block font-semibold text-blue-900">🔑 Google API Key <span class="text-red-500">*필수</span></label>
+                    <div class="flex gap-2">
+                        <input 
+                            type="password" 
+                            id="googleApiKey"
+                            placeholder="AIz... (Google API 키 입력)"
+                            class="flex-1 px-4 py-2 text-sm border-2 border-blue-300 rounded-lg focus:border-blue-500 outline-none"
+                        />
+                        <button onclick="testApiKey()" id="testApiBtn"
+                            class="px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition whitespace-nowrap">
+                            🔍 키 테스트
+                        </button>
+                    </div>
+                    <div id="apiTestResult" class="hidden text-sm font-medium px-3 py-2 rounded-lg"></div>
+                    <input type="hidden" id="searchEngineCx" value="">
+                    <p class="text-xs text-blue-700">
+                        🤖 Gemini 내장 검색 사용 — Custom Search API 불필요!<br>
+                        📌 <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="underline">API Key 발급받기</a>
+                        &nbsp;| 키는 브라우저에만 저장되며 외부로 전송되지 않습니다.
+                    </p>
+                </div>
+
+                <!-- 오프닝 스타일 -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">🎭 오프닝 스타일</label>
+                    <select id="openingStyle" class="w-full px-6 py-4 border-2 border-gray-300 rounded-xl focus:border-blue-500 outline-none">
+                        <option value="auto">🎲 자동 (AI가 랜덤 선택)</option>
+                        <option value="question">❓ 질문형 (여러분, ~?)</option>
+                        <option value="shock">⚡ 충격형 (~했습니다)</option>
+                        <option value="date">📅 날짜형 (2024년 ~)</option>
+                        <option value="flip">🔄 뒤집기형 (우리가 알던 건 틀렸다)</option>
+                        <option value="chat">💬 대화형 (이거 아세요?)</option>
+                        <option value="stats">📊 통계형 (XX%가 ~)</option>
+                        <option value="scene">🎬 현장형 (지금 이 순간 ~)</option>
+                    </select>
+                </div>
+
+                <!-- 영상 길이 선택 (NEW!) -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">⏱️ 영상 길이</label>
+                    <div class="grid grid-cols-3 gap-3">
+                        <button onclick="selectLength('short')" id="length-short" class="length-btn px-4 py-3 rounded-lg border-2 border-gray-300 hover:border-blue-500 transition">
+                            <div class="font-bold">짧게</div>
+                            <div class="text-xs text-gray-500">30-120초</div>
+                        </button>
+                        <button onclick="selectLength('medium')" id="length-medium" class="length-btn px-4 py-3 rounded-lg border-2 border-blue-500 bg-blue-50">
+                            <div class="font-bold text-blue-700">중간</div>
+                            <div class="text-xs text-blue-600">5-8분 ⭐</div>
+                        </button>
+                        <button onclick="selectLength('long')" id="length-long" class="length-btn px-4 py-3 rounded-lg border-2 border-gray-300 hover:border-blue-500 transition">
+                            <div class="font-bold">길게</div>
+                            <div class="text-xs text-gray-500">9-20분</div>
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">💡 중간 길이를 추천합니다 (유튜브 알고리즘 최적)</p>
+                </div>
+
+                <!-- 프롬프트 관리 (카테고리별) -->
+                <div class="border border-gray-200 rounded-xl overflow-hidden">
+                    <button onclick="togglePromptEditor()" class="w-full flex items-center justify-between px-5 py-3 bg-gray-50 hover:bg-gray-100 transition text-left">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-semibold text-gray-600">⚙️ 카테고리별 프롬프트 관리</span>
+                            <span id="promptActiveBadge" class="hidden text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">커스텀 적용중</span>
+                        </div>
+                        <span id="promptArrow" class="text-gray-400 transition-transform">▼</span>
+                    </button>
+                    <div id="promptEditor" class="hidden bg-white">
+
+                        <!-- 탭: 카테고리 선택 -->
+                        <div class="bg-indigo-50 border-b border-indigo-100 px-4 py-3">
+                            <p class="text-xs font-bold text-indigo-700 mb-2">① 카테고리 선택</p>
+                            <div id="promptCatTabs" class="flex flex-wrap gap-1.5">
+                                <!-- JS로 렌더 -->
+                            </div>
+                        </div>
+
+                        <!-- 선택된 카테고리 프롬프트 편집 -->
+                        <div class="p-4 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <p class="text-sm font-semibold text-gray-700">
+                                    ② 프롬프트 입력: <span id="promptCatLabel" class="text-indigo-600">← 위에서 카테고리 먼저 선택</span>
+                                </p>
+                                <div class="flex items-center gap-2">
+                                    <span id="promptStatusDot" class="text-xs text-gray-400">미설정</span>
+                                </div>
+                            </div>
+
+                            <!-- 파일 업로드 -->
+                            <div class="flex items-center gap-2">
+                                <label class="cursor-pointer px-3 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-medium rounded-lg hover:bg-indigo-100 transition">
+                                    📂 .md / .txt 파일 업로드
+                                    <input type="file" id="promptFileInput" accept=".md,.txt" class="hidden" onchange="loadPromptFile(event)">
+                                </label>
+                                <span class="text-xs text-gray-400">또는 아래에 직접 붙여넣기</span>
+                            </div>
+
+                            <textarea id="customPrompt" rows="12"
+                                class="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:border-indigo-500 outline-none font-mono resize-y"
+                                placeholder="여기에 프롬프트를 붙여넣거나 파일을 업로드하세요...&#10;&#10;사용 가능한 변수:&#10;{topic} {searchData} {numbers} {facts} {companies} {people} {dates} {openingStyle} {length} {category}"></textarea>
+
+                            <div class="flex gap-2 flex-wrap">
+                                <button onclick="savePromptForCat(this)" class="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 transition">
+                                    💾 이 카테고리에 저장
+                                </button>
+                                <button onclick="deletePromptForCat()" class="px-4 py-2 bg-red-50 text-red-600 text-sm rounded-lg hover:bg-red-100 transition border border-red-200">
+                                    🗑️ 삭제
+                                </button>
+                                <button onclick="loadDefaultToEditor()" class="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 transition">
+                                    📋 기본 프롬프트 불러오기
+                                </button>
+                            </div>
+
+                            <!-- 저장된 프롬프트 목록 -->
+                            <div id="savedPromptsList" class="mt-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 생성 버튼 -->
+                <button 
+                    onclick="generateContent()"
+                    id="generateBtn"
+                    class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xl font-bold py-5 rounded-xl hover:from-blue-700 hover:to-purple-700 transition transform hover:scale-[1.02] shadow-lg"
+                >
+                    ✨ 콘텐츠 생성하기
+                </button>
+
+            </div>
+        </div>
+
+        <!-- 로딩 상태 -->
+        <div id="loadingSection" class="hidden bg-white rounded-2xl shadow-xl p-8 mb-8">
+            <h3 class="text-2xl font-bold mb-6 text-gray-800">🔍 실시간 정보 수집 중...</h3>
+            <div id="searchSteps" class="space-y-3">
+                <!-- 검색 단계가 여기에 동적으로 추가됨 -->
+            </div>
+            <div class="mt-6 bg-gray-200 rounded-full h-3 overflow-hidden">
+                <div id="progressBar" class="bg-gradient-to-r from-blue-500 to-purple-500 h-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- 수집된 정보 -->
+        <div id="infoSection" class="hidden bg-white rounded-2xl shadow-xl p-8 mb-8 fade-in">
+            <h3 class="text-2xl font-bold mb-6 text-gray-800">📊 수집된 핵심 정보</h3>
+            <div id="collectedInfo" class="grid md:grid-cols-2 gap-4">
+                <!-- 정보가 여기에 표시됨 -->
+            </div>
+        </div>
+
+        <!-- 생성된 콘텐츠 -->
+        <div id="resultSection" class="hidden space-y-6">
+            
+            <!-- 썸네일 디자인 -->
+            <div class="bg-white rounded-2xl shadow-xl p-8 fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800">🖼️ 썸네일 디자인</h3>
+                    <button onclick="copySection('thumbnailContent')" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition">
+                        📋 복사
+                    </button>
+                </div>
+                <div id="thumbnailContent" class="bg-gray-50 rounded-xl p-6 border-2 border-gray-200">
+                    <!-- 썸네일 내용 -->
+                </div>
+            </div>
+
+            <!-- 제목 옵션 -->
+            <div class="bg-white rounded-2xl shadow-xl p-8 fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800">📌 제목 (3가지 버전)</h3>
+                </div>
+                <div id="titleOptions" class="space-y-4">
+                    <!-- 제목 옵션들 -->
+                </div>
+            </div>
+
+            <!-- 대본 -->
+            <div class="bg-white rounded-2xl shadow-xl p-8 fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800">📝 대본 (타임라인별)</h3>
+                    <div class="flex gap-2">
+                        <button onclick="copySection('scriptContent')" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition">
+                            📋 복사
+                        </button>
+                        <button onclick="downloadPureScript()" class="px-4 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition">
+                            ⬇️ 순수 대본 다운로드
+                        </button>
+                    </div>
+                </div>
+                <div id="scriptContent" class="prose max-w-none">
+                    <!-- 대본 내용 -->
+                </div>
+            </div>
+
+            <!-- 해시태그 -->
+            <div class="bg-white rounded-2xl shadow-xl p-8 fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800">#️⃣ 해시태그</h3>
+                    <button onclick="copySection('hashtagContent')" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition">
+                        📋 복사
+                    </button>
+                </div>
+                <div id="hashtagContent" class="flex flex-wrap gap-2">
+                    <!-- 해시태그들 -->
+                </div>
+            </div>
+
+            <!-- 전체 다운로드 -->
+            <div class="text-center">
+                <button onclick="downloadAll()" class="px-8 py-4 bg-gradient-to-r from-green-600 to-teal-600 text-white text-lg font-bold rounded-xl hover:from-green-700 hover:to-teal-700 transition shadow-lg">
+                    💾 전체 다운로드 (.txt)
+                </button>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        const DEFAULT_PROMPT = `당신은 대한민국 최고의 유튜브 바이럴 콘텐츠 작가입니다.
+아래 실시간 검색 데이터를 바탕으로 "{topic}" 주제의 완성된 유튜브 대본을 작성해주세요.
+
+[실시간 검색 데이터]
+{searchData}
+
+[수집된 핵심 데이터]
+- 핵심 숫자: {numbers}
+- 핵심 사실: {facts}
+- 관련 기업: {companies}
+- 주요 인물: {people}
+- 날짜: {dates}
+
+[영상 설정]
+- 오프닝 스타일: {openingStyle}
+- 영상 길이: {length}
+- 카테고리: {category}
+
+⚠️ 글자수 규칙 (절대 준수):
+{lengthRule}
+
+[작성 규칙]
+1. 실제 검색 데이터의 사실만 사용 (허구 금지)
+2. 오프닝 15초 안에 시청자를 완전히 사로잡을 것
+3. 숫자와 대립 구도를 강하게 활용
+4. "여러분" 호칭, 짧고 강한 문장
+5. 중간 광고 포인트 표시 [광고포인트]
+6. 섹션별로 명확히 구분: [오프닝] [본론1] [본론2] [본론3] [클라이맥스] [결론/CTA]
+
+지금 바로 완성된 대본 전문을 작성하세요:`;
+
+        let selectedCategory = 'economy';
+        let selectedLength = 'medium'; // 기본값: 중간
+        let collectedData = {
+            mainNumbers: ['220%', '60%', '47조원'],
+            keyDates: ['2024년 1월 26일', '2026년 2월 5일'],
+            companies: ['삼성전자', 'SK하이닉스', '엔비디아'],
+            people: ['트럼프', '이재용'],
+            sources: [
+                { title: '예시 뉴스 1', url: '#' },
+                { title: '예시 뉴스 2', url: '#' }
+            ]
+        };
+
+        // ── 카테고리 데이터 ──────────────────────────────────────
+        const CATEGORY_MAP = {
+            economy: {
+                label: '💰 경제', color: 'blue',
+                subs: [
+                    { id: 'realestate', label: '🏠 부동산' },
+                    { id: 'invest',     label: '💹 재테크' },
+                    { id: 'stock',      label: '📈 주식' },
+                    { id: 'kospi',      label: '📊 코스피' },
+                    { id: 'semiconductor', label: '💾 반도체' },
+                    { id: 'ai',         label: '🤖 AI' },
+                    { id: 'global',     label: '🌐 글로벌경제' },
+                    { id: 'crypto',     label: '₿ 가상화폐' },
+                ]
+            },
+            incident: {
+                label: '🚨 사건사고', color: 'orange',
+                subs: [
+                    { id: 'crime',      label: '🔪 범죄/강력' },
+                    { id: 'fraud',      label: '💸 사기/횡령' },
+                    { id: 'accident',   label: '🚗 사고/재난' },
+                    { id: 'corporate',  label: '🏢 기업비리' },
+                    { id: 'techspionage', label: '🕵️ 기술유출' },
+                    { id: 'scandal',    label: '😱 스캔들' },
+                ]
+            },
+            hotissue: {
+                label: '🔥 핫이슈', color: 'red',
+                subs: [
+                    { id: 'politics',   label: '🏛️ 정치' },
+                    { id: 'intl',       label: '🌍 국제' },
+                    { id: 'trend',      label: '📱 트렌드' },
+                    { id: 'entertain',  label: '🎬 연예' },
+                    { id: 'sports',     label: '⚽ 스포츠' },
+                    { id: 'policy',     label: '📋 정책/규제' },
+                ]
+            },
+            society: {
+                label: '🧠 사회/심리', color: 'purple',
+                subs: [
+                    { id: 'psychology', label: '🧠 심리학' },
+                    { id: 'sociology',  label: '👥 사회현상' },
+                    { id: 'education',  label: '🎓 교육' },
+                    { id: 'health',     label: '💊 건강/의학' },
+                    { id: 'environment', label: '🌿 환경' },
+                ]
+            },
+            military: {
+                label: '🪖 안보/방산', color: 'green',
+                subs: [
+                    { id: 'defense',    label: '🪖 방산수출' },
+                    { id: 'security',   label: '🛡️ 국가안보' },
+                    { id: 'nkorea',     label: '🇰🇵 북한' },
+                    { id: 'uskorea',    label: '🇺🇸 한미동맹' },
+                    { id: 'weapon',     label: '🚀 무기/전략' },
+                ]
+            },
+            history: {
+                label: '📜 역사/인물', color: 'yellow',
+                subs: [
+                    { id: 'korean_hist', label: '🇰🇷 한국사' },
+                    { id: 'world_hist',  label: '🌍 세계사' },
+                    { id: 'figure',      label: '👤 위인전' },
+                    { id: 'hidden',      label: '🔍 숨겨진역사' },
+                ]
+            },
+            korea: {
+                label: '🇰🇷 국뽕', color: 'rose',
+                subs: [
+                    { id: 'nationalism', label: '🇰🇷 국뽕일반' },
+                    { id: 'kculture',    label: '🎵 한류/K-컬처' },
+                    { id: 'ktech',       label: '⚙️ 한국기술' },
+                    { id: 'world_first', label: '🥇 세계최초/최고' },
+                ]
+            }
+        };
+
+        const COLOR_CLASSES = {
+            blue:   { main: ['border-blue-500','bg-blue-100'],   sub: ['border-blue-400','bg-blue-50','text-blue-700'] },
+            orange: { main: ['border-orange-500','bg-orange-100'], sub: ['border-orange-400','bg-orange-50','text-orange-700'] },
+            red:    { main: ['border-red-500','bg-red-100'],     sub: ['border-red-400','bg-red-50','text-red-700'] },
+            purple: { main: ['border-purple-500','bg-purple-100'], sub: ['border-purple-400','bg-purple-50','text-purple-700'] },
+            green:  { main: ['border-green-500','bg-green-100'], sub: ['border-green-400','bg-green-50','text-green-700'] },
+            yellow: { main: ['border-yellow-500','bg-yellow-100'], sub: ['border-yellow-400','bg-yellow-50','text-yellow-700'] },
+            rose:   { main: ['border-rose-500','bg-rose-100'],   sub: ['border-rose-400','bg-rose-50','text-rose-700'] },
+        };
+
+        let selectedMainCat = null;
+
+        function selectMain(mainId) {
+            selectedMainCat = mainId;
+            const cat = CATEGORY_MAP[mainId];
+            if (!cat) return;
+
+            // 대분류 버튼 스타일 초기화
+            document.querySelectorAll('.main-cat-btn').forEach(b => {
+                b.className = b.className.replace(/border-\w+-[45]00|bg-\w+-\d00|font-bold/g, '').trim();
+                b.classList.add('border-gray-200');
+            });
+            const mainBtn = document.getElementById(`main-${mainId}`);
+            const cc = COLOR_CLASSES[cat.color];
+            mainBtn.classList.remove('border-gray-200');
+            mainBtn.classList.add(...cc.main, 'font-bold');
+
+            // 소분류 렌더
+            const subArea = document.getElementById('subCatArea');
+            const subBtns = document.getElementById('subCatBtns');
+            subBtns.innerHTML = cat.subs.map(s => `
+                <button onclick="selectSub('${mainId}','${s.id}','${s.label}')"
+                    id="sub-${s.id}"
+                    class="sub-cat-btn px-3 py-1.5 rounded-full border-2 border-gray-200 text-xs font-medium transition hover:border-${cat.color}-400 hover:bg-${cat.color}-50">
+                    ${s.label}
+                </button>
+            `).join('');
+            subArea.classList.remove('hidden');
+
+            // 배지 숨기기 (소분류 미선택 상태)
+            document.getElementById('selectedCatBadge').classList.add('hidden');
+
+            // 소분류 미선택 시 대분류를 기본 카테고리로
+            selectedCategory = mainId;
+        }
+
+        function selectSub(mainId, subId, subLabel) {
+            selectedCategory = subId;
+            const cat = CATEGORY_MAP[mainId];
+            const cc = COLOR_CLASSES[cat.color];
+
+            // 소분류 버튼 스타일
+            document.querySelectorAll('.sub-cat-btn').forEach(b => {
+                b.classList.remove(...cc.sub, 'font-bold');
+                b.classList.add('border-gray-200');
+            });
+            const btn = document.getElementById(`sub-${subId}`);
+            btn.classList.remove('border-gray-200');
+            btn.classList.add(...cc.sub, 'font-bold');
+
+            // 선택 배지
+            document.getElementById('selectedCatText').textContent = `${cat.label} > ${subLabel}`;
+            document.getElementById('selectedCatBadge').classList.remove('hidden');
+        }
+
+        // 구 selectCategory는 호환용으로 유지
+        function selectCategory(cat) { selectedCategory = cat; }
+
+        // 주제 추천 TOP5
+        async function fetchTopicRecommendations() {
+            const apiKey = getGoogleApiKey();
+            if (!apiKey || !apiKey.startsWith('AIz')) {
+                alert('먼저 Google API 키를 입력해주세요!');
+                return;
+            }
+            const btn = document.getElementById('recommendBtn');
+            const box = document.getElementById('topicRecommendations');
+            btn.disabled = true;
+            btn.textContent = '검색 중...';
+            box.innerHTML = '<p class="text-sm text-indigo-400 text-center py-2 animate-pulse">⏳ 최신 이슈 검색 중...</p>';
+
+            const categoryKeywords = {
+                // 경제
+                economy: '한국 경제 최신 이슈 2025',
+                realestate: '한국 부동산 아파트 최신 뉴스',
+                invest: '재테크 투자 최신 트렌드',
+                stock: '주식 급등 급락 이슈',
+                kospi: '코스피 코스닥 최신 동향',
+                semiconductor: '반도체 삼성 SK 하이닉스 최신',
+                ai: 'AI 인공지능 최신 이슈 한국',
+                global: '글로벌 경제 최신 이슈',
+                crypto: '비트코인 가상화폐 최신 뉴스',
+                // 사건사고
+                incident: '한국 사건사고 최신 뉴스',
+                crime: '강력범죄 살인 사건 최신',
+                fraud: '사기 횡령 금융범죄 최신',
+                accident: '사고 재난 최신 뉴스',
+                corporate: '기업비리 횡령 최신',
+                techspionage: '기술유출 산업스파이 최신',
+                scandal: '스캔들 최신 뉴스',
+                // 핫이슈
+                hotissue: '한국 핫이슈 최신 트렌드',
+                politics: '한국 정치 최신 이슈',
+                intl: '국제 최신 이슈 뉴스',
+                trend: '최신 트렌드 유행',
+                entertain: '연예 최신 이슈',
+                sports: '스포츠 최신 이슈',
+                policy: '정부 정책 규제 최신',
+                // 사회/심리
+                society: '사회 심리 최신 연구',
+                psychology: '심리학 흥미로운 연구 최신',
+                sociology: '사회현상 최신 이슈',
+                education: '교육 입시 최신 뉴스',
+                health: '건강 의학 최신 연구',
+                environment: '환경 기후 최신 뉴스',
+                // 안보/방산
+                military: '한국 방산 안보 최신',
+                defense: '한국 방산 무기 수출 최신',
+                security: '국가안보 최신 이슈',
+                nkorea: '북한 최신 뉴스',
+                uskorea: '한미동맹 최신 이슈',
+                weapon: '한국 무기 전략 최신',
+                // 역사/인물
+                history: '역사 인물 숨겨진 이야기',
+                korean_hist: '한국사 숨겨진 역사',
+                world_hist: '세계사 흥미로운 이야기',
+                figure: '위인 인물 이야기',
+                hidden: '역사 숨겨진 진실',
+                // 국뽕
+                korea: '한국 세계 최초 최고 국뽕',
+                nationalism: '한국 자랑스러운 이야기',
+                kculture: '한류 K팝 K드라마 최신',
+                ktech: '한국 기술 세계 최고',
+                world_first: '한국 세계최초 세계최고',
+            };
+            const keyword = categoryKeywords[selectedCategory] || categoryKeywords[selectedMainCat] || '한국 최신 핫이슈';
+
+            try {
+                // 1단계: google_search로 최신 뉴스 텍스트 수집
+                const step1Res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `오늘 "${keyword}" 관련 최신 한국 뉴스 5개를 검색해서 각각 제목과 핵심 내용을 간략히 정리해줘.` }] }],
+                        tools: [{ google_search: {} }],
+                        generationConfig: { temperature: 0.3, maxOutputTokens: 2048 }
+                    })
+                });
+                const step1Data = await step1Res.json();
+                if (step1Data.error) throw new Error(step1Data.error.message);
+                const newsText = step1Data.candidates?.[0]?.content?.parts?.map(p => p.text||'').join('') || '';
+                if (!newsText) throw new Error('뉴스 검색 결과가 없습니다');
+
+                // 2단계: 뉴스 텍스트 → JSON 변환 (google_search 없이)
+                const step2Res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `아래 뉴스를 보고 유튜브 바이럴 주제 5개를 JSON으로 반환해. 반드시 ASCII가 아닌 문자도 포함 가능. 다른 텍스트 없이 JSON만.\n\n[뉴스]\n${newsText.slice(0,3000)}\n\n반환형식(반드시 이 구조 그대로):\n{"topics":[{"title":"제목1","hook":"훅1"},{"title":"제목2","hook":"훅2"},{"title":"제목3","hook":"훅3"},{"title":"제목4","hook":"훅4"},{"title":"제목5","hook":"훅5"}]}` }] }],
+                        generationConfig: { temperature: 0.5, maxOutputTokens: 2048, responseMimeType: 'application/json' }
+                    })
+                });
+                const step2Data = await step2Res.json();
+                if (step2Data.error) throw new Error(step2Data.error.message);
+                const jsonText = step2Data.candidates?.[0]?.content?.parts?.map(p => p.text||'').join('') || '';
+                if (!jsonText) throw new Error('주제 생성 실패');
+                const parsed = JSON.parse(jsonText.replace(/```json\n?|```\n?/g, '').trim());
+                const topics = parsed.topics || [];
+
+                box.innerHTML = topics.map((t, i) => `
+                    <div class="flex items-start gap-3 p-3 bg-white rounded-lg border border-indigo-100 hover:border-indigo-400 cursor-pointer transition group"
+                         onclick="selectTopic('${t.title.replace(/'/g, "\\'")}')">
+                        <span class="text-indigo-600 font-bold text-lg min-w-[24px]">${i+1}</span>
+                        <div class="flex-1">
+                            <p class="font-semibold text-gray-800 text-sm group-hover:text-indigo-700">${t.title}</p>
+                            <p class="text-xs text-gray-500 mt-0.5">${t.hook}</p>
+                        </div>
+                        <span class="text-xs text-indigo-500 group-hover:text-indigo-700 font-medium whitespace-nowrap">선택 →</span>
+                    </div>
+                `).join('');
+
+            } catch (e) {
+                console.error('추천 오류 상세:', e);
+                box.innerHTML = `<p class="text-sm text-red-500 text-center py-2">❌ ${e.message}</p>`;
+            }
+            btn.disabled = false;
+            btn.textContent = '🔄 다시 추천';
+        }
+
+        function selectTopic(title) {
+            document.getElementById('topicInput').value = title;
+            document.getElementById('topicInput').focus();
+            // 살짝 하이라이트 효과
+            const input = document.getElementById('topicInput');
+            input.classList.add('border-indigo-500', 'ring-4', 'ring-indigo-100');
+            setTimeout(() => input.classList.remove('border-indigo-500', 'ring-4', 'ring-indigo-100'), 1500);
+        }
+
+        // 프롬프트 에디터
+        // ── 카테고리별 프롬프트 관리 ────────────────────────────
+        let currentPromptCat = null; // 현재 편집 중인 카테고리
+
+        // 모든 카테고리 플랫 목록 (대분류 + 소분류)
+        function getAllCats() {
+            const list = [];
+            Object.entries(CATEGORY_MAP).forEach(([mainId, main]) => {
+                list.push({ id: mainId, label: main.label, color: main.color });
+                main.subs.forEach(s => list.push({ id: s.id, label: `${main.label.split(' ')[0]} ${s.label}`, color: main.color }));
+            });
+            return list;
+        }
+
+        function getPromptKey(catId) { return `prompt_cat_${catId}`; }
+
+        function loadPromptForCat(catId) {
+            return localStorage.getItem(getPromptKey(catId)) || null;
+        }
+
+        function savePromptForCat(btnEl) {
+            if (!currentPromptCat) { alert('먼저 위에서 카테고리를 선택하세요!'); return; }
+            const val = document.getElementById('customPrompt').value.trim();
+            if (!val) { alert('프롬프트 내용을 입력하세요!'); return; }
+            localStorage.setItem(getPromptKey(currentPromptCat), val);
+            updatePromptTabStyles();
+            updateSavedPromptsList();
+            updatePromptActiveBadge();
+            if (btnEl) {
+                btnEl.textContent = '✅ 저장됨!';
+                setTimeout(() => btnEl.textContent = '💾 이 카테고리에 저장', 1500);
+            }
+        }
+
+        function deletePromptForCat() {
+            if (!currentPromptCat) return;
+            if (!confirm('이 카테고리의 프롬프트를 삭제할까요? 기본 프롬프트로 돌아갑니다.')) return;
+            localStorage.removeItem(getPromptKey(currentPromptCat));
+            document.getElementById('customPrompt').value = '';
+            updatePromptTabStyles();
+            updateSavedPromptsList();
+            updatePromptStatusDot(currentPromptCat);
+            updatePromptActiveBadge();
+        }
+
+        function loadDefaultToEditor() {
+            document.getElementById('customPrompt').value = DEFAULT_PROMPT;
+        }
+
+        function loadPromptFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('customPrompt').value = e.target.result;
+            };
+            reader.readAsText(file, 'UTF-8');
+            event.target.value = ''; // reset input
+        }
+
+        function selectPromptCat(catId) {
+            currentPromptCat = catId;
+            const cat = getAllCats().find(c => c.id === catId);
+            document.getElementById('promptCatLabel').textContent = cat ? cat.label : catId;
+
+            document.querySelectorAll('.prompt-cat-tab').forEach(b => {
+                b.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-600');
+                b.classList.add('border-gray-300', 'text-gray-600', 'bg-white');
+            });
+            const tab = document.getElementById(`ptab-${catId}`);
+            if (tab) {
+                tab.classList.remove('border-gray-300', 'text-gray-600', 'bg-white');
+                tab.classList.add('bg-indigo-600', 'text-white', 'border-indigo-600');
+            }
+
+            const saved = loadPromptForCat(catId);
+            document.getElementById('customPrompt').value = saved || '';
+            updatePromptStatusDot(catId);
+        }
+
+        function updatePromptStatusDot(catId) {
+            const saved = loadPromptForCat(catId);
+            const dot = document.getElementById('promptStatusDot');
+            if (saved) {
+                dot.textContent = `✅ 저장됨 (${saved.length.toLocaleString()}자)`;
+                dot.className = 'text-xs text-green-600 font-medium';
+            } else {
+                dot.textContent = '미설정 (기본 프롬프트 사용)';
+                dot.className = 'text-xs text-gray-400';
+            }
+        }
+
+        function updatePromptTabStyles() {
+            getAllCats().forEach(cat => {
+                const tab = document.getElementById(`ptab-${cat.id}`);
+                if (!tab) return;
+                const saved = loadPromptForCat(cat.id);
+                if (saved) tab.querySelector('.prompt-dot')?.classList.remove('hidden');
+                else        tab.querySelector('.prompt-dot')?.classList.add('hidden');
+            });
+        }
+
+        function updateSavedPromptsList() {
+            const saved = getAllCats().filter(c => loadPromptForCat(c.id));
+            const el = document.getElementById('savedPromptsList');
+            if (!el) return;
+            if (saved.length === 0) { el.innerHTML = ''; return; }
+            el.innerHTML = `
+                <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <p class="text-xs font-bold text-green-700 mb-2">💾 저장된 프롬프트 (${saved.length}개) — 클릭하면 불러옵니다</p>
+                    <div class="flex flex-wrap gap-1.5">
+                        ${saved.map(c => `
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-green-300 text-green-700 text-xs rounded-full cursor-pointer hover:bg-green-100 font-medium"
+                                onclick="selectPromptCat('${c.id}')">
+                                ${c.label} ✓
+                            </span>
+                        `).join('')}
+                    </div>
+                </div>`;
+        }
+
+        function updatePromptActiveBadge() {
+            const badge = document.getElementById('promptActiveBadge');
+            if (!badge) return;
+            const hasAny = getAllCats().some(c => loadPromptForCat(c.id));
+            badge.classList.toggle('hidden', !hasAny);
+        }
+
+        function renderPromptCatTabs() {
+            const container = document.getElementById('promptCatTabs');
+            if (!container) return;
+
+            let html = '';
+            // 대분류 버튼
+            Object.entries(CATEGORY_MAP).forEach(([mainId, main]) => {
+                const mainSaved = loadPromptForCat(mainId);
+                html += `<button id="ptab-${mainId}" onclick="selectPromptCat('${mainId}')"
+                    class="prompt-cat-tab inline-flex items-center gap-1 px-3 py-1.5 border-2 border-gray-300 bg-white text-gray-600 text-xs font-bold rounded-lg transition hover:border-indigo-400 hover:bg-indigo-50">
+                    ${main.label}
+                    <span class="prompt-dot w-2 h-2 rounded-full bg-green-500 ${mainSaved ? '' : 'hidden'}"></span>
+                </button>`;
+            });
+            html += `<div class="w-full h-px bg-gray-200 my-1"></div>`;
+            // 소분류 버튼 전체
+            Object.entries(CATEGORY_MAP).forEach(([mainId, main]) => {
+                main.subs.forEach(s => {
+                    const sSaved = loadPromptForCat(s.id);
+                    html += `<button id="ptab-${s.id}" onclick="selectPromptCat('${s.id}')"
+                        class="prompt-cat-tab inline-flex items-center gap-1 px-2.5 py-1 border border-gray-300 bg-white text-gray-500 text-xs rounded-lg transition hover:border-indigo-400 hover:bg-indigo-50">
+                        ${s.label}
+                        <span class="prompt-dot w-1.5 h-1.5 rounded-full bg-green-500 ${sSaved ? '' : 'hidden'}"></span>
+                    </button>`;
+                });
+            });
+            container.innerHTML = html;
+            updateSavedPromptsList();
+            updatePromptActiveBadge();
+        }
+
+        function togglePromptEditor() {
+            const editor = document.getElementById('promptEditor');
+            const arrow = document.getElementById('promptArrow');
+            const isHidden = editor.classList.contains('hidden');
+            editor.classList.toggle('hidden');
+            arrow.style.transform = isHidden ? 'rotate(180deg)' : '';
+            if (isHidden) renderPromptCatTabs();
+        }
+
+        function resetPrompt() {
+            document.getElementById('customPrompt').value = DEFAULT_PROMPT;
+        }
+
+        function getActivePrompt(topic, searchData, data, openingStyle, lengthGuide) {
+            const catPrompt = loadPromptForCat(selectedCategory) || loadPromptForCat(selectedMainCat) || null;
+            const template = catPrompt || DEFAULT_PROMPT;
+
+            const lengthRules = {
+                short:  '쇼츠/숏폼 4블록 구조 (훅→팩트→분석→인사이트). 400자 이상 800자 이하. 800자 절대 초과 금지.',
+                medium: '중간 길이. 1500자 이상 3000자 이하. 3000자 절대 초과 금지.',
+                long:   '롱폼 3막 8장 구조. 이번 장은 2500~3500자. 브릿지 멘트 필수.'
+            };
+
+            const filled = template
+                .replace(/{topic}/g, topic)
+                .replace(/{searchData}/g, searchData.slice(0, 5000))
+                .replace(/{numbers}/g, (data.mainNumbers||[]).join(', '))
+                .replace(/{facts}/g, (data.keyfacts||[]).join(' / '))
+                .replace(/{companies}/g, (data.companies||[]).join(', '))
+                .replace(/{people}/g, (data.people||[]).join(', '))
+                .replace(/{dates}/g, (data.keyDates||[]).join(', '))
+                .replace(/{openingStyle}/g, openingStyle)
+                .replace(/{length}/g, lengthGuide)
+                .replace(/{lengthRule}/g, lengthRules[selectedLength] || lengthRules.medium)
+                .replace(/{category}/g, selectedCategory);
+
+            // 대화형 프롬프트 방지: 질문/승인 대기 없이 즉시 대본 생성
+            const forceNow = `
+⚠️ 중요 지시: 질문하거나 승인을 기다리지 말고 지금 즉시 대본 전문을 작성하세요.
+주제: "${topic}"
+영상 길이: ${lengthGuide}
+${lengthRules[selectedLength] || lengthRules.medium}
+
+[실시간 검색 데이터]
+${searchData.slice(0, 4000)}
+
+[수집 데이터] 숫자: ${(data.mainNumbers||[]).join(', ')} | 기업: ${(data.companies||[]).join(', ')} | 인물: ${(data.people||[]).join(', ')}
+
+[프롬프트 지시]
+${filled}
+
+지금 바로 완성된 대본을 작성하세요:`;
+
+            return forceNow;
+        }
+
+
+        function selectLength(length) {
+            selectedLength = length;
+            document.querySelectorAll('.length-btn').forEach(btn => {
+                btn.classList.remove('border-blue-500', 'bg-blue-50');
+                btn.querySelector('.font-bold').classList.remove('text-blue-700');
+                btn.querySelector('.text-xs').classList.remove('text-blue-600');
+            });
+            
+            const btn = document.getElementById(`length-${length}`);
+            btn.classList.add('border-blue-500', 'bg-blue-50');
+            btn.querySelector('.font-bold').classList.add('text-blue-700');
+            btn.querySelector('.text-xs').classList.add('text-blue-600');
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const saved = localStorage.getItem('google_api_key');
+            if (saved) document.getElementById('googleApiKey').value = saved;
+            const savedCx = localStorage.getItem('search_engine_cx');
+            if (savedCx) document.getElementById('searchEngineCx').value = savedCx;
+        });
+
+        async function testApiKey() {
+            const apiKey = document.getElementById('googleApiKey').value.trim();
+            const resultEl = document.getElementById('apiTestResult');
+            const btn = document.getElementById('testApiBtn');
+
+            if (!apiKey || !apiKey.startsWith('AIz')) {
+                resultEl.className = 'text-sm font-medium px-3 py-2 rounded-lg bg-red-100 text-red-700';
+                resultEl.textContent = '❌ API 키를 입력해주세요 (AIz로 시작)';
+                resultEl.classList.remove('hidden');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '테스트 중...';
+            resultEl.className = 'text-sm font-medium px-3 py-2 rounded-lg bg-gray-100 text-gray-600';
+            resultEl.textContent = '⏳ Gemini API 연결 확인 중...';
+            resultEl.classList.remove('hidden');
+
+            try {
+                const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+                const gRes = await fetch(geminiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: '안녕' }] }],
+                        generationConfig: { maxOutputTokens: 10 }
+                    })
+                });
+                const gData = await gRes.json();
+                if (gData.error) throw new Error(`Gemini: ${gData.error.message}`);
+
+                localStorage.setItem('google_api_key', apiKey);
+                resultEl.className = 'text-sm font-medium px-3 py-2 rounded-lg bg-green-100 text-green-700';
+                resultEl.textContent = '✅ API 키 정상! Gemini 연결됨. 저장완료!';
+            } catch(e) {
+                resultEl.className = 'text-sm font-medium px-3 py-2 rounded-lg bg-red-100 text-red-700';
+                resultEl.textContent = `❌ 오류: ${e.message}`;
+            }
+            btn.disabled = false;
+            btn.textContent = '🔍 키 테스트';
+        }
+
+        async function generateContent() {
+            const topic = document.getElementById('topicInput').value.trim();
+            const openingStyle = document.getElementById('openingStyle').value;
+            const apiKey = document.getElementById('googleApiKey').value.trim();
+
+            if (!topic) {
+                alert('주제를 입력해주세요!');
+                return;
+            }
+            if (!apiKey || !apiKey.startsWith('AIz')) {
+                alert('Google API 키를 입력해주세요! (AIz로 시작)\n\nhttps://console.cloud.google.com/apis/credentials 에서 발급받을 수 있습니다.');
+                return;
+            }
+            // API 키 저장
+            localStorage.setItem('google_api_key', apiKey);
+            const cx = document.getElementById('searchEngineCx').value.trim();
+            if (cx) localStorage.setItem('search_engine_cx', cx);
+
+            // 결과 섹션 숨기기
+            document.getElementById('resultSection').classList.add('hidden');
+            document.getElementById('infoSection').classList.add('hidden');
+
+            // 로딩 시작
+            showLoading();
+
+            try {
+                console.log('1. 웹 검색 시작...');
+                // 1단계: 웹 검색
+                await performWebSearch(topic);
+
+                console.log('2. 정보 표시...');
+                // 2단계: 정보 표시
+                showCollectedInfo();
+
+                console.log('3. 콘텐츠 생성...');
+                // 3단계: 콘텐츠 생성
+                await generateAllContent(topic, openingStyle);
+
+                console.log('4. 완료!');
+                // 완료
+                hideLoading();
+                document.getElementById('resultSection').classList.remove('hidden');
+                
+                // 스크롤 (부드럽게)
+                setTimeout(() => {
+                    document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+
+            } catch (error) {
+                console.error('❌ 생성 중 오류:', error);
+                console.error('오류 상세:', error.message, error.stack);
+                
+                alert('콘텐츠 생성 중 오류가 발생했습니다.\n\n오류 내용: ' + error.message + '\n\n페이지를 새로고침 후 다시 시도해주세요.');
+                hideLoading();
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('loadingSection').classList.remove('hidden');
+            document.getElementById('searchSteps').innerHTML = '';
+            document.getElementById('progressBar').style.width = '0%';
+        }
+
+        function hideLoading() {
+            setTimeout(() => {
+                document.getElementById('loadingSection').classList.add('hidden');
+            }, 500);
+        }
+
+        function addSearchStep(text, status = 'loading') {
+            const step = document.createElement('div');
+            step.className = 'flex items-center gap-3 p-4 bg-gray-50 rounded-lg';
+            
+            const icon = status === 'loading' ? '⏳' : status === 'done' ? '✅' : '❌';
+            step.innerHTML = `
+                <span class="text-2xl">${icon}</span>
+                <span class="text-gray-700">${text}</span>
+            `;
+            
+            document.getElementById('searchSteps').appendChild(step);
+            return step;
+        }
+
+        function updateProgress(percent) {
+            document.getElementById('progressBar').style.width = percent + '%';
+        }
+
+        function getGoogleApiKey() {
+            return document.getElementById('googleApiKey').value.trim();
+        }
+
+        // Google Custom Search API로 실시간 웹 검색
+        // Gemini 내장 검색 사용 (Custom Search API 불필요!)
+        async function searchWithGoogle(query) {
+            const apiKey = getGoogleApiKey();
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: `다음 키워드로 최신 한국 뉴스를 검색하고 핵심 내용을 요약해줘: "${query}"\n\n형식: 제목과 핵심 내용을 5개 항목으로 정리` }] }],
+                    tools: [{ google_search: {} }],
+                    generationConfig: { temperature: 0.3, maxOutputTokens: 2048 }
+                })
+            });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error.message);
+            return data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
+        }
+
+        // Gemini API로 텍스트 생성
+        async function callGemini(prompt, jsonMode = false) {
+            const apiKey = getGoogleApiKey();
+            const model = 'gemini-2.5-flash';
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        temperature: 0.9,
+                        maxOutputTokens: jsonMode ? 1024 : 8192,
+                        ...(jsonMode ? { responseMimeType: 'application/json' } : {})
+                    }
+                })
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error?.message || `Gemini API 오류 ${res.status}`);
+            }
+            const data = await res.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            if (jsonMode) {
+                try {
+                    return JSON.parse(text.replace(/```json\n?|```\n?/g, '').trim());
+                } catch { return null; }
+            }
+            return text;
+        }
+
+        function generateSearchQueries(topic) {
+            return [
+                `${topic} site:news.naver.com OR site:n.news.naver.com`,
+                `${topic} 연합뉴스 OR 조선일보 OR 중앙일보 OR 한겨레`,
+                `${topic} 통계 데이터 분석 한국`,
+                `${topic} 시장 전망 한국경제 OR 매일경제 OR 머니투데이`,
+                `${topic} 관련 기업 현황 뉴스`,
+                `${topic} 원인 배경 분석`,
+                `${topic} 문제점 논란`,
+                `${topic} 전문가 의견 전망`,
+                `${topic} 해외 반응 외신`,
+                `${topic} 최신 동향 한국`
+            ];
+        }
+
+        async function performWebSearch(topic) {
+            const queries = generateSearchQueries(topic);
+            let allSearchText = '';
+
+            for (let i = 0; i < queries.length; i++) {
+                const step = addSearchStep(`검색 중: "${queries[i]}"`, 'loading');
+                updateProgress((i + 1) / queries.length * 40);
+                try {
+                    const result = await searchWithGoogle(queries[i]);
+                    if (result) allSearchText += result + '\n\n---\n\n';
+                    step.querySelector('span:first-child').textContent = '✅';
+                } catch (error) {
+                    console.error('검색 오류:', error);
+                    step.querySelector('span:first-child').textContent = '⚠️';
+                }
+                await new Promise(r => setTimeout(r, 200));
+            }
+
+            // Gemini로 핵심 정보 추출
+            const extractStep = addSearchStep('핵심 정보 추출 중...', 'loading');
+            updateProgress(50);
+            try {
+                const extractPrompt = `다음 검색 결과에서 "${topic}" 관련 핵심 정보를 추출해서 JSON으로만 반환해:
+
+${allSearchText.slice(0, 6000)}
+
+반환 형식 (JSON만, 다른 텍스트 없이):
+{
+  "mainNumbers": ["핵심숫자1 (예: 220%)", "핵심숫자2", "핵심숫자3"],
+  "keyDates": ["날짜1", "날짜2"],
+  "companies": ["기업1", "기업2", "기업3"],
+  "people": ["인물1", "인물2"],
+  "keyfacts": ["핵심사실1", "핵심사실2", "핵심사실3"],
+  "sources": [{"title": "기사제목", "url": "#"}]
+}`;
+                const extracted = await callGemini(extractPrompt, true);
+                if (extracted && extracted.mainNumbers) {
+                    collectedData = extracted;
+                    // 실제 검색 텍스트도 저장
+                    collectedData._rawSearch = allSearchText;
+                } else {
+                    collectedData = simulateDataCollection(topic);
+                    collectedData._rawSearch = allSearchText;
+                }
+                extractStep.querySelector('span:first-child').textContent = '✅';
+            } catch (error) {
+                console.error('정보 추출 오류:', error);
+                collectedData = simulateDataCollection(topic);
+                collectedData._rawSearch = allSearchText;
+                extractStep.querySelector('span:first-child').textContent = '✅';
+            }
+        }
+
+        function simulateDataCollection(topic) {
+            return {
+                mainNumbers: ['데이터 수집 중', '-', '-'],
+                keyDates: ['2025년'],
+                companies: [topic],
+                people: ['-'],
+                keyfacts: [`${topic} 관련 정보`],
+                sources: []
+            };
+        }
+
+        function showCollectedInfo() {
+            updateProgress(60);
+            document.getElementById('infoSection').classList.remove('hidden');
+
+            const numbers = collectedData.mainNumbers || [];
+            const companies = collectedData.companies || [];
+            const people = collectedData.people || [];
+            const dates = collectedData.keyDates || [];
+            const facts = collectedData.keyfacts || [];
+
+            const infoHTML = `
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <h4 class="font-bold text-blue-900 mb-2">📈 핵심 숫자</h4>
+                    <div class="flex flex-wrap gap-2">
+                        ${numbers.map(num => `<span class="px-3 py-1 bg-blue-200 text-blue-900 rounded-full text-sm font-semibold">${num}</span>`).join('')}
+                    </div>
+                </div>
+                <div class="bg-orange-50 p-4 rounded-lg">
+                    <h4 class="font-bold text-orange-900 mb-2">💡 핵심 사실</h4>
+                    <ul class="text-sm text-orange-800 space-y-1">
+                        ${facts.map(f => `<li>• ${f}</li>`).join('')}
+                    </ul>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-lg">
+                    <h4 class="font-bold text-purple-900 mb-2">🏢 관련 기업</h4>
+                    <div class="flex flex-wrap gap-2">
+                        ${companies.map(c => `<span class="px-3 py-1 bg-purple-200 text-purple-900 rounded-full text-sm">${c}</span>`).join('')}
+                    </div>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                    <h4 class="font-bold text-green-900 mb-2">👤 주요 인물</h4>
+                    <div class="flex flex-wrap gap-2">
+                        ${people.map(p => `<span class="px-3 py-1 bg-green-200 text-green-900 rounded-full text-sm">${p}</span>`).join('')}
+                    </div>
+                </div>
+                <div class="bg-yellow-50 p-4 rounded-lg">
+                    <h4 class="font-bold text-yellow-900 mb-2">📅 주요 날짜</h4>
+                    <div class="flex flex-wrap gap-2">
+                        ${dates.map(d => `<span class="px-3 py-1 bg-yellow-200 text-yellow-900 rounded-full text-sm">${d}</span>`).join('')}
+                    </div>
+                </div>
+            `;
+            document.getElementById('collectedInfo').innerHTML = infoHTML;
+        }
+
+        async function generateAllContent(topic, openingStyle) {
+            updateProgress(65);
+            const step = addSearchStep('🤖 Gemini AI 대본 생성 중...', 'loading');
+
+            try {
+                const videoLength = selectedLength || 'medium';
+                const data = collectedData;
+                const rawSearch = data._rawSearch || '';
+
+                if (videoLength === 'long') {
+                    // 롱폼: 자동 생성 안 하고 장별 버튼 표시
+                    window._generatedScript = null;
+                    window._longScripts = { 1: null, 2: null, 3: null };
+                    window._longTopic = topic;
+                    window._longOpeningStyle = openingStyle;
+                    step.querySelector('span:first-child').textContent = '✅';
+                } else {
+                    const lengthGuide = { short: '30-120초 (약 400~800자, 숏폼/쇼츠용)', medium: '5-8분 (약 1500~3000자)' }[videoLength];
+                    const scriptPrompt = getActivePrompt(topic, rawSearch, data, openingStyle, lengthGuide);
+                    const script = await callGemini(scriptPrompt, false);
+                    updateProgress(85);
+                    window._generatedScript = script || null;
+                    window._longScripts = null;
+                    step.querySelector('span:first-child').textContent = '✅';
+                }
+            } catch (error) {
+                console.error('대본 생성 오류:', error)
+                step.querySelector('span:first-child').textContent = '⚠️';
+                window._generatedScript = null;
+            }
+
+            updateProgress(90);
+            generateThumbnail(topic);
+            generateTitles(topic);
+            generateScript(topic, openingStyle);
+            generateHashtags(topic);
+            updateProgress(100);
+        }
+
+        // Claude API 호출 함수
+        function generateThumbnail(topic) {
+            const data = {
+                mainNumbers: collectedData?.mainNumbers || ['220%', '60%', '47조원'],
+                companies: collectedData?.companies || ['삼성전자', 'SK하이닉스'],
+                people: collectedData?.people || ['트럼프', '이재용']
+            };
+            
+            const thumbnail = `
+                <h4 class="font-bold text-lg mb-4">📐 레이아웃</h4>
+                <div class="bg-gradient-to-r from-blue-100 to-purple-100 p-6 rounded-lg mb-4 border-2 border-dashed border-gray-300">
+                    <div class="grid grid-cols-3 gap-4 text-center">
+                        <div class="bg-white p-4 rounded-lg shadow">
+                            <div class="text-4xl mb-2">👤</div>
+                            <p class="text-sm font-semibold">왼쪽 인물</p>
+                            <p class="text-xs text-gray-600">승자/주인공</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow">
+                            <div class="text-4xl mb-2">🏢</div>
+                            <p class="text-sm font-semibold">중앙 로고</p>
+                            <p class="text-xs text-gray-600">기업/심볼</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow">
+                            <div class="text-4xl mb-2">👤</div>
+                            <p class="text-sm font-semibold">오른쪽 인물</p>
+                            <p class="text-xs text-gray-600">패자/대립자</p>
+                        </div>
+                    </div>
+                    <div class="mt-4 space-y-2">
+                        <div class="bg-white p-3 rounded-lg shadow">
+                            <p class="font-bold text-xl text-gray-800">충격! ${data.mainNumbers[0]} vs ${data.mainNumbers[1]}</p>
+                        </div>
+                        <div class="bg-red-500 p-3 rounded-lg shadow">
+                            <p class="font-bold text-white">${data.people[0]}에 맞선 ${data.companies[0]}의 비밀 무기</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <h4 class="font-bold text-lg mb-3">🎨 디자인 가이드</h4>
+                <ul class="space-y-2 text-gray-700">
+                    <li>• <strong>왼쪽 인물:</strong> ${data.people[1] || '주요 인물'} (표정: 자신감, 여유)</li>
+                    <li>• <strong>오른쪽 인물:</strong> ${data.people[0] || '대립 인물'} (표정: 당황, 곤혹)</li>
+                    <li>• <strong>중앙 심볼:</strong> ${data.companies[0]} 로고</li>
+                    <li>• <strong>배경:</strong> 회로기판/공장 이미지 + 파랑/빨강 대비</li>
+                    <li>• <strong>폰트:</strong> 굵은 고딕체 (가독성 최우선)</li>
+                </ul>
+            `;
+            document.getElementById('thumbnailContent').innerHTML = thumbnail;
+        }
+
+        function generateTitles(topic) {
+            const data = {
+                mainNumbers: collectedData?.mainNumbers || [],
+                companies: collectedData?.companies || [topic],
+                people: collectedData?.people || [],
+                keyfacts: collectedData?.keyfacts || []
+            };
+            
+            const n0 = data.mainNumbers[0] || '충격';
+            const c0 = data.companies[0] || topic;
+            const p0 = data.people[0] || '';
+            const f0 = data.keyfacts[0] || topic;
+
+            const titles = [
+                `${p0 ? p0 + ' 관세 폭탄에도 ' : ''}${c0}가 ${n0} 가격 올린 진짜 이유`,
+                `충격! ${f0}의 숨겨진 진실`,
+                `${c0}, ${n0}의 비밀 | 아무도 알려주지 않는 이야기`
+            ].filter(t => t.length > 5);
+            
+            const html = titles.map((title, i) => `
+                <div class="flex items-start gap-4 p-4 bg-gray-50 rounded-lg hover:bg-blue-50 transition cursor-pointer" onclick="copyText('${title.replace(/'/g, "\\'")}')">
+                    <span class="text-2xl font-bold text-blue-600">${String.fromCharCode(65 + i)}</span>
+                    <div class="flex-1">
+                        <p class="text-gray-800 font-medium">${title}</p>
+                        <p class="text-sm text-gray-500 mt-1">${title.length}자</p>
+                    </div>
+                    <button class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200">복사</button>
+                </div>
+            `).join('');
+            
+            document.getElementById('titleOptions').innerHTML = html;
+        }
+
+
+        function formatScript(text, topic) {
+            const formatted = text
+                .replace(/\[오프닝\]/g, '<div class="border-l-4 border-blue-500 pl-4 mb-6"><h4 class="font-bold text-blue-700 mb-2">📍 오프닝</h4><div class="bg-blue-50 p-4 rounded-lg whitespace-pre-line">')
+                .replace(/\[본론1\]/g, '</div></div><div class="border-l-4 border-purple-500 pl-4 mb-6"><h4 class="font-bold text-purple-700 mb-2">🔥 본론 1</h4><div class="bg-purple-50 p-4 rounded-lg whitespace-pre-line">')
+                .replace(/\[본론2\]/g, '</div></div><div class="border-l-4 border-green-500 pl-4 mb-6"><h4 class="font-bold text-green-700 mb-2">📊 본론 2</h4><div class="bg-green-50 p-4 rounded-lg whitespace-pre-line">')
+                .replace(/\[본론3\]/g, '</div></div><div class="border-l-4 border-yellow-500 pl-4 mb-6"><h4 class="font-bold text-yellow-700 mb-2">💡 본론 3</h4><div class="bg-yellow-50 p-4 rounded-lg whitespace-pre-line">')
+                .replace(/\[클라이맥스\]/g, '</div></div><div class="border-l-4 border-red-500 pl-4 mb-6"><h4 class="font-bold text-red-700 mb-2">🚀 클라이맥스</h4><div class="bg-red-50 p-4 rounded-lg whitespace-pre-line">')
+                .replace(/\[결론\/CTA\]/g, '</div></div><div class="border-l-4 border-gray-500 pl-4 mb-6"><h4 class="font-bold text-gray-700 mb-2">🎬 결론/CTA</h4><div class="bg-gray-50 p-4 rounded-lg whitespace-pre-line">')
+                .replace(/\[광고포인트\]/g, '<div class="my-3 py-2 px-4 bg-yellow-200 text-yellow-800 rounded font-bold text-sm">💰 광고 포인트</div>')
+                .replace(/###\s*(.*)/g, '<h4 class="font-bold text-gray-800 mt-4 mb-2">$1</h4>')
+                .replace(/##\s*(.*)/g, '<h3 class="font-bold text-lg text-gray-900 mt-4 mb-2">$1</h3>');
+            return formatted;
+        }
+
+        function generateScript(topic, openingStyle) {
+            const scriptEl = document.getElementById('scriptContent');
+
+            // 롱폼 모드: 장별 버튼 UI
+            if (selectedLength === 'long') {
+                scriptEl.innerHTML = `
+                    <div class="mb-4 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+                        <p class="text-sm text-blue-800 font-semibold">📖 롱폼 대본 - 장별로 나눠 생성합니다</p>
+                        <p class="text-xs text-blue-600 mt-1">각 장은 약 2500~3500자로 생성됩니다. 순서대로 생성하면 앞 장 내용을 이어받아 자연스럽게 연결됩니다.</p>
+                    </div>
+                    <div class="flex gap-3 mb-6">
+                        <button onclick="generateLongPart(1)" id="btn-part1"
+                            class="flex-1 py-4 rounded-xl border-2 border-indigo-400 bg-indigo-50 text-indigo-700 font-bold text-lg hover:bg-indigo-100 transition">
+                            📖 1장 생성<br><span class="text-xs font-normal">오프닝 + 본론1</span>
+                        </button>
+                        <button onclick="generateLongPart(2)" id="btn-part2"
+                            class="flex-1 py-4 rounded-xl border-2 border-purple-400 bg-purple-50 text-purple-700 font-bold text-lg hover:bg-purple-100 transition">
+                            📖 2장 생성<br><span class="text-xs font-normal">본론2 + 본론3</span>
+                        </button>
+                        <button onclick="generateLongPart(3)" id="btn-part3"
+                            class="flex-1 py-4 rounded-xl border-2 border-rose-400 bg-rose-50 text-rose-700 font-bold text-lg hover:bg-rose-100 transition">
+                            📖 3장 생성<br><span class="text-xs font-normal">클라이맥스 + 결론</span>
+                        </button>
+                    </div>
+                    <div id="longScriptParts" class="space-y-6"></div>
+                `;
+                return;
+            }
+
+            // 숏폼/중간: 기존 방식
+            if (window._generatedScript) {
+                const formatted = formatScript(window._generatedScript, topic);
+                scriptEl.innerHTML = `
+                    <div class="mb-4 p-4 bg-green-50 rounded-lg border-l-4 border-green-500">
+                        <p class="text-sm text-green-800">✅ <strong>Gemini AI + 실시간 웹검색</strong>으로 생성된 대본 | 주제: ${topic}</p>
+                    </div>
+                    <div class="space-y-2 text-gray-800 leading-relaxed">${formatted}</div></div></div>
+                `;
+            } else {
+                scriptEl.innerHTML = `
+                    <div class="mb-4 p-4 bg-yellow-50 rounded-lg border-l-4 border-yellow-500">
+                        <p class="text-sm text-yellow-800">⚠️ AI 대본 생성 실패. API 키와 네트워크를 확인해주세요.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // 롱폼 장별 생성
+        async function generateLongPart(partNum) {
+            const topic = window._longTopic || document.getElementById('topicInput').value.trim();
+            const openingStyle = window._longOpeningStyle || 'auto';
+            const data = collectedData;
+            const rawSearch = data._rawSearch || '';
+
+            const btn = document.getElementById(`btn-part${partNum}`);
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<span class="animate-pulse">⏳ 생성 중...</span>`;
+
+            const partGuides = {
+                1: {
+                    name: '1장 (오프닝 + 본론1)',
+                    color: 'indigo',
+                    instruction: `전체 3장 중 1장입니다. 다음 내용을 작성하세요:
+- [오프닝]: 시청자를 완전히 사로잡는 강렬한 오프닝 (15초 분량)
+- [본론1]: 핵심 배경과 문제 제기
+약 2500~3500자로 작성. 2장에서 이어질 것임을 자연스럽게 암시하며 마무리.`,
+                    prevContext: ''
+                },
+                2: {
+                    name: '2장 (본론2 + 본론3)',
+                    color: 'purple',
+                    instruction: `전체 3장 중 2장입니다. 다음 내용을 작성하세요:
+- [본론2]: 핵심 사건/데이터 심층 분석
+- [본론3]: 반전 포인트와 충격 사실 공개 [광고포인트] 포함
+약 2500~3500자로 작성. 1장에서 이어지는 자연스러운 연결로 시작.`,
+                    prevContext: window._longScripts?.[1] ? `\n\n[1장에서 이미 작성된 내용 요약]\n${window._longScripts[1].slice(0, 800)}...` : ''
+                },
+                3: {
+                    name: '3장 (클라이맥스 + 결론)',
+                    color: 'rose',
+                    instruction: `전체 3장 중 3장(마지막)입니다. 다음 내용을 작성하세요:
+- [클라이맥스]: 모든 것이 연결되는 최고 반전 순간
+- [결론/CTA]: 강렬한 마무리 + 구독/좋아요/댓글 유도
+약 2500~3500자로 작성. 전체 이야기를 완결 짓는 강한 엔딩.`,
+                    prevContext: window._longScripts?.[2] ? `\n\n[앞 장에서 이미 작성된 내용 요약]\n${window._longScripts[2].slice(0, 800)}...` : ''
+                }
+            };
+
+            const guide = partGuides[partNum];
+            const prompt = `당신은 대한민국 최고의 유튜브 롱폼 콘텐츠 작가입니다.
+주제: "${topic}"
+카테고리: ${selectedCategory}
+오프닝 스타일: ${openingStyle}
+
+[실시간 검색 데이터]
+${rawSearch.slice(0, 4000)}
+
+[핵심 데이터]
+- 숫자: ${(data.mainNumbers||[]).join(', ')}
+- 사실: ${(data.keyfacts||[]).join(' / ')}
+- 기업: ${(data.companies||[]).join(', ')}
+- 인물: ${(data.people||[]).join(', ')}
+${guide.prevContext}
+
+[이번 장 작성 지시]
+${guide.instruction}
+
+규칙:
+- 실제 검색 데이터 기반 사실만 사용
+- "여러분" 호칭, 짧고 강한 문장
+- 섹션 태그 반드시 표시: [오프닝] [본론1] [본론2] [본론3] [클라이맥스] [결론/CTA]
+- 반드시 2500자 이상 3500자 이하
+
+지금 바로 ${guide.name} 대본을 작성하세요:`;
+
+            try {
+                const script = await callGemini(prompt, false);
+                if (!window._longScripts) window._longScripts = {};
+                window._longScripts[partNum] = script;
+
+                // 해당 장 결과를 화면에 추가/교체
+                const partsEl = document.getElementById('longScriptParts');
+                let partEl = document.getElementById(`long-part-${partNum}`);
+                if (!partEl) {
+                    partEl = document.createElement('div');
+                    partEl.id = `long-part-${partNum}`;
+                    partsEl.appendChild(partEl);
+                }
+
+                const colorMap = { indigo: 'border-indigo-400 bg-indigo-50 text-indigo-700', purple: 'border-purple-400 bg-purple-50 text-purple-700', rose: 'border-rose-400 bg-rose-50 text-rose-700' };
+                partEl.innerHTML = `
+                    <div class="border-2 ${colorMap[guide.color].split(' ')[0]} rounded-xl overflow-hidden">
+                        <div class="flex items-center justify-between px-4 py-3 ${colorMap[guide.color].split(' ')[1]}">
+                            <span class="font-bold ${colorMap[guide.color].split(' ')[2]}">📖 ${guide.name}</span>
+                            <div class="flex gap-2">
+                                <button onclick="generateLongPart(${partNum})" class="text-xs px-3 py-1 bg-white rounded-lg border hover:bg-gray-50">🔄 재생성</button>
+                                <button onclick="copyLongPart(${partNum})" class="text-xs px-3 py-1 bg-white rounded-lg border hover:bg-gray-50">📋 복사</button>
+                            </div>
+                        </div>
+                        <div class="p-4 text-gray-800 leading-relaxed space-y-2" id="long-part-content-${partNum}">
+                            ${formatScript(script, topic)}
+                        </div>
+                    </div>
+                `;
+
+                btn.innerHTML = `✅ ${partNum}장 완료<br><span class="text-xs font-normal">클릭 시 재생성</span>`;
+                btn.disabled = false;
+            } catch(e) {
+                console.error(e);
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+                alert(`${partNum}장 생성 실패: ${e.message}`);
+            }
+        }
+
+        function copyLongPart(partNum) {
+            const el = document.getElementById(`long-part-content-${partNum}`);
+            if (el) {
+                navigator.clipboard.writeText(el.innerText);
+                alert(`${partNum}장이 복사되었습니다!`);
+            }
+        }
+
+
+        function generateHashtags(topic) {
+            const data = {
+                mainNumbers: collectedData?.mainNumbers || ['220%', '60%', '47조원'],
+                companies: collectedData?.companies || ['삼성전자', 'SK하이닉스'],
+                people: collectedData?.people || ['트럼프', '이재용']
+            };
+            
+            const hashtags = [
+                `#${data.companies[0]}`,
+                `#${data.people[0]}관세`,
+                `#${data.mainNumbers[0].replace('%', '퍼센트')}`,
+                '#반도체',
+                '#한국경제',
+                '#HBM',
+                '#주식투자',
+                '#경제뉴스',
+                '#실적주',
+                '#슈퍼사이클',
+                '#재테크',
+                '#투자전략',
+                '#경제분석',
+                '#시사이슈',
+                '#뚱뚱경제'
+            ];
+            
+            const html = hashtags.map(tag => 
+                `<span class="px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium cursor-pointer hover:bg-blue-200 transition" onclick="copyText('${tag}')">${tag}</span>`
+            ).join('');
+            
+            document.getElementById('hashtagContent').innerHTML = html;
+        }
+
+        function copyText(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('복사되었습니다!');
+            });
+        }
+
+        function copySection(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('복사되었습니다!');
+            });
+        }
+
+        function downloadPureScript() {
+            const topic = document.getElementById('topicInput').value.trim() || '대본';
+            let pureText = '';
+
+            if (selectedLength === 'long' && window._longScripts) {
+                // 롱폼: 1장+2장+3장 합치기
+                [1, 2, 3].forEach(i => {
+                    if (window._longScripts[i]) {
+                        pureText += (i > 1 ? '\n\n' : '') + window._longScripts[i];
+                    }
+                });
+            } else if (window._generatedScript) {
+                pureText = window._generatedScript;
+            } else {
+                // 화면에 보이는 텍스트 fallback
+                pureText = document.getElementById('scriptContent').innerText;
+            }
+
+            // HTML 태그 제거 + 불필요한 UI 텍스트 제거
+            pureText = pureText
+                .replace(/<[^>]*>/g, '')           // HTML 태그 제거
+                .replace(/✅.*?대본.*?\n/g, '')     // 상단 상태 메시지 제거
+                .replace(/📋 복사|🔄 재생성/g, '') // 버튼 텍스트 제거
+                .replace(/※ 총 글자수:.*/g, '')    // 글자수 표기 제거
+                .trim();
+
+            if (!pureText) {
+                alert('먼저 대본을 생성해주세요!');
+                return;
+            }
+
+            const blob = new Blob([pureText], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `대본_${topic}_${new Date().toLocaleDateString('ko-KR').replace(/\. /g,'-').replace('.','')}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function downloadAll() {
+            const thumbnail = document.getElementById('thumbnailContent').innerText;
+            const titles = Array.from(document.getElementById('titleOptions').children).map(el => el.innerText).join('\n\n');
+            const hashtags = document.getElementById('hashtagContent').innerText;
+
+            let scriptText = '';
+            if (selectedLength === 'long' && window._longScripts) {
+                [1,2,3].forEach(i => {
+                    if (window._longScripts[i]) {
+                        scriptText += `\n\n=== ${i}장 ===\n\n${window._longScripts[i]}`;
+                    }
+                });
+            } else {
+                scriptText = document.getElementById('scriptContent').innerText;
+            }
+            
+            const content = `
+===========================================
+🎬 바이럴 콘텐츠 패키지
+===========================================
+
+📅 생성일: ${new Date().toLocaleString('ko-KR')}
+📚 카테고리: ${selectedCategory}
+📝 주제: ${document.getElementById('topicInput').value}
+
+===========================================
+🖼️ 썸네일 디자인
+===========================================
+
+${thumbnail}
+
+===========================================
+📌 제목 옵션
+===========================================
+
+${titles}
+
+===========================================
+📝 대본
+===========================================
+
+${scriptText}
+
+===========================================
+#️⃣ 해시태그
+===========================================
+
+${hashtags}
+
+===========================================
+`;
+            
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `바이럴_콘텐츠_${new Date().getTime()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 초기 선택
+        selectMain('economy');
+        selectLength('medium');
+    </script>
+</body>
+</html>

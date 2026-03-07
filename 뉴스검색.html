@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔥 핫뉴스 — 오늘 상위 20%</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#f4f1eb; --surface:#fff; --ink:#1a1208; --muted:#888;
+  --border:#e0d9ce; --hot:#d62828; --warm:#f77f00;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif;min-height:100vh;}
+
+.masthead{background:var(--ink);color:var(--bg);padding:0 32px;border-bottom:4px solid var(--hot);}
+.masthead-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:18px 0 14px;}
+.logo{font-family:'Noto Serif KR',serif;font-size:1.9rem;font-weight:900;letter-spacing:-2px;}
+.logo .hot{color:var(--hot);}
+.meta{font-size:0.75rem;color:#aaa;text-align:right;line-height:1.7;}
+.meta strong{color:var(--bg);font-size:0.88rem;display:block;}
+
+/* API SETUP */
+.setup-panel{background:var(--surface);border-bottom:2px solid var(--border);padding:20px 32px;}
+.setup-inner{max-width:1200px;margin:0 auto;}
+.setup-title{font-size:0.9rem;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.setup-title span{background:var(--hot);color:white;border-radius:3px;padding:2px 8px;font-size:0.72rem;}
+.setup-grid{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;}
+.field label{display:block;font-size:0.72rem;font-weight:700;color:var(--muted);margin-bottom:5px;letter-spacing:0.5px;}
+.field input{
+  width:100%;background:#f9f7f3;border:1px solid var(--border);
+  color:var(--ink);font-family:'Noto Sans KR',sans-serif;font-size:0.85rem;
+  padding:10px 14px;border-radius:6px;outline:none;transition:border-color 0.2s;
+}
+.field input:focus{border-color:var(--hot);}
+.field input::placeholder{color:#bbb;}
+.start-btn{
+  background:var(--hot);border:none;color:white;font-family:'Noto Sans KR',sans-serif;
+  font-weight:700;font-size:0.9rem;padding:10px 28px;border-radius:6px;cursor:pointer;
+  transition:background 0.2s;white-space:nowrap;height:42px;
+}
+.start-btn:hover{background:#b52020;}
+.start-btn:disabled{background:#ccc;cursor:not-allowed;}
+.api-status{font-size:0.75rem;margin-top:8px;padding:6px 12px;border-radius:4px;display:inline-block;}
+.api-status.ok{background:#e8f5e9;color:#2e7d32;}
+.api-status.error{background:#ffebee;color:#c62828;}
+
+/* FILTER */
+.filter-bar{background:var(--surface);border-bottom:2px solid var(--border);padding:0 32px;display:flex;overflow-x:auto;scrollbar-width:none;}
+.filter-bar::-webkit-scrollbar{display:none;}
+.filter-btn{background:none;border:none;border-bottom:3px solid transparent;color:var(--muted);font-family:'Noto Sans KR',sans-serif;font-size:0.82rem;font-weight:700;padding:13px 16px 10px;cursor:pointer;white-space:nowrap;margin-bottom:-2px;transition:all 0.2s;}
+.filter-btn:hover{color:var(--ink);}
+.filter-btn.active{color:var(--hot);border-bottom-color:var(--hot);}
+
+/* TICKER */
+.ticker-wrap{background:var(--hot);padding:7px 32px;overflow:hidden;display:flex;align-items:center;gap:14px;}
+.ticker-label{color:white;font-size:0.7rem;font-weight:700;letter-spacing:1.5px;background:rgba(0,0,0,0.25);padding:3px 10px;border-radius:3px;flex-shrink:0;}
+.ticker-text{color:white;font-size:0.82rem;white-space:nowrap;animation:tick 60s linear infinite;display:inline-block;}
+@keyframes tick{0%{transform:translateX(60vw)}100%{transform:translateX(-100%)}}
+
+/* STATS */
+.stats-row{max-width:1200px;margin:0 auto;padding:14px 32px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.stat-pill{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:5px 14px;font-size:0.74rem;display:flex;align-items:center;gap:6px;}
+.stat-pill .val{font-weight:700;color:var(--hot);}
+.live-dot{display:inline-block;width:7px;height:7px;background:#2ecc71;border-radius:50%;animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* MAIN */
+main{max-width:1200px;margin:0 auto;padding:24px 32px 60px;}
+
+.loading{text-align:center;padding:70px 20px;color:var(--muted);}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--hot);border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 16px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-step{font-size:0.78rem;color:var(--muted);margin-top:8px;}
+.progress-bar{width:240px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 0;overflow:hidden;}
+.progress-fill{height:100%;background:var(--hot);border-radius:2px;transition:width 0.3s;}
+
+.empty{text-align:center;padding:60px;color:var(--muted);}
+.empty span{font-size:3rem;display:block;margin-bottom:12px;}
+
+/* Welcome */
+.welcome{max-width:560px;margin:80px auto;text-align:center;padding:0 20px;}
+.welcome h2{font-family:'Noto Serif KR',serif;font-size:1.6rem;font-weight:900;margin-bottom:12px;}
+.welcome p{font-size:0.85rem;color:var(--muted);line-height:1.8;}
+.welcome .arrow{font-size:2.5rem;margin-top:20px;animation:bounce 1s infinite;}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+
+/* Section header */
+.section-header{display:flex;align-items:baseline;gap:12px;margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid var(--ink);}
+.section-title{font-family:'Noto Serif KR',serif;font-size:1.15rem;font-weight:900;}
+.section-sub{font-size:0.78rem;color:var(--muted);}
+
+/* GRID */
+.news-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+
+/* Featured */
+.card-featured{
+  grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;
+  background:var(--ink);color:var(--bg);border-radius:8px;overflow:hidden;
+  text-decoration:none;transition:transform 0.2s,box-shadow 0.2s;
+  animation:fadeUp 0.4s ease forwards;opacity:0;
+}
+.card-featured:hover{transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,0.25);}
+.feat-body{padding:28px;display:flex;flex-direction:column;justify-content:space-between;}
+.feat-img{background:#222;overflow:hidden;position:relative;min-height:240px;}
+.feat-img img{width:100%;height:100%;object-fit:cover;opacity:0.8;}
+.feat-img .no-img{width:100%;height:100%;min-height:240px;display:flex;align-items:center;justify-content:center;font-size:4rem;color:#444;}
+.feat-num{position:absolute;top:12px;left:12px;background:rgba(0,0,0,0.75);color:white;font-family:'Noto Serif KR',serif;font-size:2rem;font-weight:900;padding:4px 12px;border-radius:4px;}
+.feat-source{font-size:0.7rem;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;}
+.feat-title{font-family:'Noto Serif KR',serif;font-size:1.35rem;font-weight:900;line-height:1.45;margin-bottom:12px;color:#f4f1eb;}
+.feat-desc{font-size:0.82rem;color:#bbb;line-height:1.65;margin-bottom:16px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.feat-footer{display:flex;align-items:center;justify-content:space-between;padding-top:14px;border-top:1px solid #333;}
+
+/* Card */
+.card{
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  overflow:hidden;text-decoration:none;color:inherit;
+  display:flex;flex-direction:column;transition:all 0.2s;
+  animation:fadeUp 0.4s ease forwards;opacity:0;
+}
+.card:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,0.1);border-color:var(--hot);}
+@keyframes fadeUp{to{opacity:1;transform:translateY(0)}}
+.card:nth-child(2){animation-delay:0.05s}
+.card:nth-child(3){animation-delay:0.1s}
+.card:nth-child(4){animation-delay:0.15s}
+.card:nth-child(n+5){animation-delay:0.2s}
+
+.card-thumb{width:100%;aspect-ratio:16/9;object-fit:cover;background:#f0ede8;display:block;}
+.card-body{padding:14px;flex:1;display:flex;flex-direction:column;}
+.rank-num{font-family:'Noto Serif KR',serif;font-size:2.2rem;font-weight:900;color:#e8e2d9;line-height:1;margin-bottom:4px;}
+.card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.card-source{font-size:0.68rem;color:var(--hot);font-weight:700;text-transform:uppercase;}
+.card-title{font-family:'Noto Serif KR',serif;font-size:0.94rem;font-weight:700;line-height:1.5;margin-bottom:8px;flex:1;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.card-footer{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:10px;border-top:1px solid var(--border);font-size:0.72rem;color:var(--muted);}
+
+.heat-badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:4px;font-size:0.68rem;font-weight:700;}
+.heat-5{background:#7f0000;color:white;}
+.heat-10{background:var(--hot);color:white;}
+.heat-15{background:var(--warm);color:white;}
+.heat-20{background:#e9a800;color:white;}
+
+.score-bar-bg{background:#eee;border-radius:3px;height:4px;overflow:hidden;margin:6px 0;}
+.score-bar-fill{height:100%;border-radius:3px;transition:width 0.8s ease;}
+
+@media(max-width:900px){.news-grid{grid-template-columns:repeat(2,1fr)}.card-featured{grid-template-columns:1fr}.feat-img{min-height:180px}}
+@media(max-width:600px){main,.stats-row{padding-left:16px;padding-right:16px}.masthead,.filter-bar,.setup-panel{padding-left:16px;padding-right:16px}.news-grid{grid-template-columns:1fr}.setup-grid{grid-template-columns:1fr}.logo{font-size:1.4rem}}
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-inner">
+    <div class="logo">🔥<span class="hot">핫</span>뉴스</div>
+    <div class="meta">
+      <strong id="dateStr">-</strong>
+      오늘 기사 중 인기 상위 20%만 표시
+    </div>
+  </div>
+</div>
+
+<!-- API KEY -->
+<div class="setup-panel">
+  <div class="setup-inner">
+    <div class="setup-title">
+      <span>🔑 NewsAPI 키</span>
+      newsapi.org 에서 발급받은 API 키를 입력하세요
+    </div>
+    <div class="setup-grid">
+      <div class="field">
+        <label>NEWSAPI KEY</label>
+        <input type="password" id="apiKey" placeholder="발급받은 API 키 입력..." />
+      </div>
+      <button class="start-btn" id="startBtn" onclick="startFetch()">🔥 수집 / 키변경</button>
+    </div>
+    <div id="apiStatus"></div>
+  </div>
+</div>
+
+<!-- FILTER -->
+<div class="filter-bar">
+  <button class="filter-btn active" data-q="한국 뉴스" data-label="전체">🗞 전체</button>
+  <button class="filter-btn" data-q="정치 국회 대통령" data-label="정치">🏛 정치</button>
+  <button class="filter-btn" data-q="경제 주식 환율 금융" data-label="경제">💰 경제</button>
+  <button class="filter-btn" data-q="사건 범죄 사고 경찰" data-label="사건사고">🚨 사건사고</button>
+  <button class="filter-btn" data-q="국제 세계 해외" data-label="세계">🌏 세계</button>
+  <button class="filter-btn" data-q="IT 인공지능 반도체 기술" data-label="IT">💻 IT</button>
+</div>
+
+<!-- TICKER -->
+<div class="ticker-wrap" id="tickerWrap" style="display:none">
+  <span class="ticker-label">🔴 LIVE</span>
+  <span class="ticker-text" id="tickerText">-</span>
+</div>
+
+<!-- STATS -->
+<div class="stats-row" id="statsRow" style="display:none">
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <div class="stat-pill"><span class="live-dot"></span> 실시간</div>
+    <div class="stat-pill">수집 <span class="val" id="totalCount">-</span>건</div>
+    <div class="stat-pill">표시 <span class="val" id="showCount">-</span>건 (상위 20%)</div>
+  </div>
+  <div class="stat-pill" id="updateTime">-</div>
+</div>
+
+<main>
+  <div class="welcome" id="welcomeBox">
+    <h2>오늘의 핫뉴스만 골라드려요</h2>
+    <p>NewsAPI로 오늘 기사를 수집하고<br>키워드 빈도 + 최신성으로 점수를 매겨<br><strong>상위 20% 핫한 기사만</strong> 보여드려요</p>
+    <p style="margin-top:12px;font-size:0.8rem;">위에 API 키 입력 후 <strong>🔥 뉴스 수집</strong> 버튼을 누르세요</p>
+    <div class="arrow">☝️</div>
+  </div>
+
+  <div class="loading" id="loadingBox" style="display:none">
+    <div class="spinner"></div>
+    <p id="loadMsg">뉴스 수집 중...</p>
+    <div class="load-step" id="loadStep">-</div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  </div>
+
+  <div id="newsArea"></div>
+</main>
+
+<script>
+const NEWSAPI = 'https://newsapi.org/v2';
+
+// 카테고리별 쿼리 목록
+const CAT_QUERIES = {
+  '한국 뉴스':           ['한국','속보','사건','정치','경제','사회','연예','스포츠'],
+  '정치 국회 대통령':    ['정치','국회','대통령','여야','정부'],
+  '경제 주식 환율 금융': ['경제','주식','환율','금리','부동산'],
+  '사건 범죄 사고 경찰': ['사건','범죄','사고','경찰','화재'],
+  '국제 세계 해외':      ['국제','미국','중국','전쟁','해외'],
+  '연예 아이돌 드라마':  ['연예','아이돌','드라마','케이팝','배우'],
+  '스포츠 야구 축구':    ['스포츠','야구','축구','농구','손흥민'],
+  'IT 인공지능 반도체 기술': ['AI','반도체','인공지능','IT','스타트업'],
+};
+
+let API_KEY = '';
+let currentQ = '한국 뉴스';
+let allArticles = [];
+let hotClusters = [];
+
+// 날짜
+document.getElementById('dateStr').textContent =
+  new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
+
+// 저장된 키 불러오기 + 자동 수집
+window.onload = () => {
+  const saved = localStorage.getItem('newsapi_key');
+  if (saved) {
+    API_KEY = saved;
+    document.getElementById('apiKey').value = saved;
+    document.getElementById('apiStatus').innerHTML =
+      '<div class="api-status ok">✅ 저장된 키로 자동 수집 시작!</div>';
+    loadCategory(currentQ); // 자동 수집 시작
+  }
+};
+
+// ── FETCH ──
+const RSS_PROXY = 'https://corsproxy.io/?';
+let useRSS = false; // NewsAPI 한도 초과시 true로 전환
+
+// Google News RSS - 카테고리별 여러 쿼리
+const RSS_QUERIES = {
+  '한국 뉴스': [
+    'https://news.google.com/rss?hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=속보&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=사건+사고+오늘&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=부동산+아파트+전세&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=촉법소년+청소년+범죄&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=경제+물가+금리&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=정치+국회+대통령&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=살인+폭행+체포+검거&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=화재+교통사고+사망&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=취업+실업+노동+임금&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=AI+반도체+삼성+SK&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=미국+트럼프+관세+무역&hl=ko&gl=KR&ceid=KR:ko',
+  ],
+  '정치 국회 대통령': [
+    'https://news.google.com/rss/search?q=정치+국회&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=대통령+청와대+정부&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=여당+야당+선거&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=탄핵+헌법재판소&hl=ko&gl=KR&ceid=KR:ko',
+  ],
+  '경제 주식 환율 금융': [
+    'https://news.google.com/rss/search?q=경제+주식+코스피&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=환율+달러+금리+한국은행&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=부동산+아파트+전세+청약&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=물가+인플레이션+소비&hl=ko&gl=KR&ceid=KR:ko',
+  ],
+  '사건 범죄 사고 경찰': [
+    'https://news.google.com/rss/search?q=사건+범죄+경찰+검거&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=살인+폭행+강도+성범죄&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=화재+교통사고+추락+사망&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=촉법소년+마약+보이스피싱&hl=ko&gl=KR&ceid=KR:ko',
+  ],
+  '국제 세계 해외': [
+    'https://news.google.com/rss/search?q=국제+세계+미국&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=트럼프+관세+무역전쟁&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=전쟁+분쟁+우크라이나&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=중국+일본+북한+외교&hl=ko&gl=KR&ceid=KR:ko',
+  ],
+  'IT 인공지능 반도체 기술': [
+    'https://news.google.com/rss/search?q=AI+인공지능+챗GPT&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=반도체+삼성+SK하이닉스&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=스타트업+IT+앱+서비스&hl=ko&gl=KR&ceid=KR:ko',
+  ],
+};
+
+async function fetchOneRSS(rssUrl) {
+  try {
+    const res = await fetch(`${RSS_PROXY}${encodeURIComponent(rssUrl)}`, {signal: AbortSignal.timeout(10000)});
+    const text = await res.text();
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(text, 'text/xml');
+    const items = [...xml.querySelectorAll('item')];
+    if (!items.length) return [];
+    return items.map(item => {
+      const get = tag => item.querySelector(tag)?.textContent?.trim() || '';
+      const enclosure = item.querySelector('enclosure');
+      const thumb = enclosure?.getAttribute('url') || null;
+      return {
+        title: get('title').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>'),
+        link: get('link') || get('guid'),
+        description: get('description').replace(/<[^>]*>/g,'').trim(),
+        pubDate: get('pubDate') || new Date().toISOString(),
+        thumbnail: thumb,
+        source: get('source') || 'Google News',
+      };
+    }).filter(a => {
+      if (!a.title) return false;
+      // 오늘 or 어제(자정 이후 12시간) 기사 포함
+      const pub = new Date(a.pubDate);
+      const now = new Date();
+      const diffH = (now - pub) / 3600000;
+      return diffH <= 24; // 24시간 이내
+    });
+  } catch(e) {
+    return [];
+  }
+}
+
+async function fetchRSS(q) {
+  const urls = RSS_QUERIES[q] || RSS_QUERIES['한국 뉴스'];
+  // 모든 URL 병렬 수집
+  const all = await Promise.all(urls.map(url => fetchOneRSS(url)));
+  const merged = all.flat();
+  // 중복 제거 (제목 앞 10글자 기준)
+  const seen = new Set();
+  return merged.filter(a => {
+    const k = a.title.slice(0,10);
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
+  });
+}
+
+async function fetchNews(query) {
+  // RSS 모드면 바로 RSS
+  if (useRSS) return fetchRSS(currentQ);
+
+  const today = new Date().toISOString().split('T')[0];
+  const url = `${NEWSAPI}/everything?q=${encodeURIComponent(query)}&language=ko&from=${today}&sortBy=popularity&pageSize=20&apiKey=${API_KEY}`;
+  try {
+    const res = await fetch(url, {signal: AbortSignal.timeout(10000)});
+    const data = await res.json();
+    if (data.status === 'error') {
+      // 한도 초과 또는 키 오류 → RSS 자동 전환
+      if (data.code === 'rateLimited' || data.code === 'maximumResultsReached' || data.message?.includes('quota') || data.message?.includes('limit')) {
+        console.warn('NewsAPI 한도 초과 → Google News RSS로 자동 전환');
+        useRSS = true;
+        document.getElementById('apiStatus').innerHTML =
+          '<div class="api-status ok">⚠️ NewsAPI 한도 초과 → Google News RSS로 자동 전환됨 (실시간 무료)</div>';
+        return fetchRSS(currentQ);
+      }
+      throw new Error(data.message);
+    }
+    return (data.articles || []).map(a => ({
+      title: a.title || '',
+      link: a.url,
+      description: a.description || '',
+      pubDate: a.publishedAt,
+      thumbnail: a.urlToImage,
+      source: a.source?.name || '',
+      _query: query,
+    })).filter(a => a.title && a.title !== '[Removed]');
+  } catch(e) {
+    console.warn('NewsAPI 실패:', query, e.message);
+    // 네트워크 오류도 RSS로 fallback
+    if (!useRSS) {
+      useRSS = true;
+      document.getElementById('apiStatus').innerHTML =
+        '<div class="api-status ok">⚠️ NewsAPI 오류 → Google News RSS로 자동 전환됨</div>';
+      return fetchRSS(currentQ);
+    }
+    return [{_error: e.message}];
+  }
+}
+
+// ── SCORING ──
+const STOP = new Set(['이','가','은','는','을','를','에','와','과','의','로','도','만','에서','하는','있는','된','한','및','등','이번','지난','오늘','어제','위해','통해','대한','관련','대해','따라','이후','앞서']);
+
+function kws(title) {
+  return title.replace(/[^\uAC00-\uD7A3a-zA-Z0-9\s]/g,' ')
+    .split(/\s+/).filter(w => w.length >= 2 && !STOP.has(w));
+}
+
+function scoreAndCluster(articles) {
+  const freq = {};
+  articles.forEach(a => kws(a.title).forEach(k => freq[k]=(freq[k]||0)+1));
+
+  articles.forEach(a => {
+    const ws = kws(a.title);
+    const kwScore = ws.length ? ws.reduce((s,k)=>s+(freq[k]||0),0)/ws.length : 0;
+    const ageH = (Date.now()-new Date(a.pubDate))/3600000;
+    const recency = ageH<2?40:ageH<6?25:ageH<12?10:0;
+    a._kws = ws;
+    a._score = Math.round(kwScore*12+recency);
+  });
+
+  const sorted = [...articles].sort((a,b)=>b._score-a._score);
+  const used = new Set();
+  const clusters = [];
+
+  sorted.forEach((a,i)=>{
+    if(used.has(i)) return;
+    const cluster={lead:a, related:[], sources:new Set([a.source])};
+    sorted.forEach((b,j)=>{
+      if(i===j||used.has(j)) return;
+      const shared = a._kws.filter(k=>b._kws.includes(k)).length;
+      if(shared>=2){ cluster.related.push(b); cluster.sources.add(b.source); used.add(j); }
+    });
+    used.add(i);
+    cluster.score = a._score + cluster.related.length*8 + cluster.sources.size*6;
+    clusters.push(cluster);
+  });
+
+  return clusters.sort((a,b)=>b.score-a.score);
+}
+
+// ── START ──
+async function startFetch() {
+  API_KEY = document.getElementById('apiKey').value.trim();
+  if (!API_KEY) {
+    document.getElementById('apiStatus').innerHTML = '<div class="api-status error">❌ API 키를 입력하세요</div>';
+    return;
+  }
+  localStorage.setItem('newsapi_key', API_KEY);
+  loadCategory(currentQ);
+}
+
+async function loadCategory(q) {
+  document.getElementById('welcomeBox').style.display = 'none';
+  document.getElementById('loadingBox').style.display = 'block';
+  document.getElementById('newsArea').innerHTML = '';
+  document.getElementById('tickerWrap').style.display = 'none';
+  document.getElementById('statsRow').style.display = 'none';
+  document.getElementById('startBtn').disabled = true;
+
+  // 로컬 파일(file://)이면 RSS 바로 사용
+  if (location.protocol === 'file:' || useRSS) useRSS = true;
+
+  const stepEl = document.getElementById('loadStep');
+  const progressEl = document.getElementById('progressFill');
+  const results = [];
+  let firstError = null;
+
+  if (useRSS) {
+    const urlCount = (RSS_QUERIES[q] || RSS_QUERIES['한국 뉴스']).length;
+    stepEl.textContent = `Google News RSS ${urlCount}개 소스 병렬 수집 중...`;
+    progressEl.style.width = '30%';
+    const items = await fetchRSS(q);
+    results.push(...items);
+    progressEl.style.width = '100%';
+    stepEl.textContent = `${items.length}건 수집 완료!`;
+  } else {
+    const queries = CAT_QUERIES[q] || ['한국'];
+    for (let i=0; i<queries.length; i++) {
+      stepEl.textContent = `"${queries[i]}" 검색 중... (${i+1}/${queries.length})`;
+      progressEl.style.width = `${Math.round(((i+1)/queries.length)*100)}%`;
+      const items = await fetchNews(queries[i]);
+      items.forEach(item => {
+        if (item._error) { if(!firstError) firstError=item._error; }
+        else results.push(item);
+      });
+      await new Promise(r=>setTimeout(r,200));
+    }
+  }
+
+  document.getElementById('startBtn').disabled = false;
+
+  if (!results.length) {
+    document.getElementById('loadingBox').style.display = 'none';
+    document.getElementById('newsArea').innerHTML = `
+      <div class="empty">
+        <span>⚠️</span>
+        <p style="margin-bottom:8px">❌ ${firstError || '결과 없음'}</p>
+        <p style="font-size:0.8rem;color:#bbb;">API 키를 다시 확인해주세요 — <a href="https://newsapi.org/account" target="_blank" style="color:var(--hot)">newsapi.org/account</a></p>
+      </div>`;
+    return;
+  }
+
+  // dedup
+  const seen = new Set();
+  const unique = results.filter(a=>{
+    const k=a.title.slice(0,12); if(seen.has(k)) return false; seen.add(k); return true;
+  });
+
+  allArticles = unique;
+  stepEl.textContent = '인기도 분석 중...';
+  await new Promise(r=>setTimeout(r,80));
+
+  const clusters = scoreAndCluster(unique);
+  const top20 = Math.max(1, Math.ceil(clusters.length*0.2));
+  hotClusters = clusters.slice(0, top20);
+
+  document.getElementById('totalCount').textContent = unique.length;
+  document.getElementById('showCount').textContent = hotClusters.length;
+  document.getElementById('updateTime').textContent = `🕐 ${new Date().toLocaleTimeString('ko-KR')}`;
+  document.getElementById('statsRow').style.display = 'flex';
+  document.getElementById('tickerText').textContent =
+    hotClusters.slice(0,8).map((c,i)=>`${i+1}위  ${c.lead.title}`).join('   ●   ');
+  document.getElementById('tickerWrap').style.display = 'flex';
+  document.getElementById('loadingBox').style.display = 'none';
+  document.getElementById('apiStatus').innerHTML =
+    `<div class="api-status ok">✅ 완료 — ${unique.length}건 수집 → 상위 20% (${hotClusters.length}건) 표시</div>`;
+
+  renderCards(hotClusters);
+}
+
+// ── RENDER ──
+function heatTier(rank, total) {
+  const p = rank/total;
+  if(p<=0.05) return {cls:'heat-5', label:'🔴 TOP 5%'};
+  if(p<=0.10) return {cls:'heat-10',label:'🟠 TOP 10%'};
+  if(p<=0.15) return {cls:'heat-15',label:'🟡 TOP 15%'};
+  return              {cls:'heat-20',label:'🟤 TOP 20%'};
+}
+function timeAgo(d) {
+  const diff=Math.floor((Date.now()-new Date(d))/1000);
+  if(diff<60) return '방금 전';
+  if(diff<3600) return `${Math.floor(diff/60)}분 전`;
+  if(diff<86400) return `${Math.floor(diff/3600)}시간 전`;
+  return new Date(d).toLocaleDateString('ko-KR',{month:'short',day:'numeric'});
+}
+function scoreBar(score, max) {
+  const pct=Math.min(100,Math.round((score/max)*100));
+  const color=pct>75?'#d62828':pct>50?'#f77f00':'#e9a800';
+  return `<div class="score-bar-bg"><div class="score-bar-fill" style="width:${pct}%;background:${color}"></div></div>`;
+}
+
+function renderCards(clusters) {
+  const area = document.getElementById('newsArea');
+  area.innerHTML = '';
+  if (!clusters.length) {
+    area.innerHTML='<div class="empty"><span>📭</span><p>핫뉴스가 없습니다</p></div>';
+    return;
+  }
+  const maxScore = clusters[0].score;
+
+  const hdr = document.createElement('div');
+  hdr.className = 'section-header';
+  hdr.innerHTML = `<span class="section-title">🔥 오늘의 핫뉴스 — 상위 20%</span>
+    <span class="section-sub">총 ${allArticles.length}건 수집 → ${clusters.length}건 표시</span>`;
+  area.appendChild(hdr);
+
+  const grid = document.createElement('div');
+  grid.className = 'news-grid';
+
+  clusters.forEach((cluster, idx) => {
+    const {lead, related, sources, score} = cluster;
+    const heat = heatTier(idx+1, clusters.length);
+    const img = lead.thumbnail && lead.thumbnail.startsWith('http') ? lead.thumbnail : null;
+    const desc = (lead.description||'').trim().slice(0,100);
+    const srcs = [...sources].slice(0,4);
+
+    if (idx === 0) {
+      const card = document.createElement('a');
+      card.className = 'card-featured';
+      card.href = lead.link; card.target='_blank'; card.rel='noopener noreferrer';
+      card.innerHTML = `
+        <div class="feat-body">
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+              <span class="heat-badge ${heat.cls}">${heat.label}</span>
+              <span style="font-size:0.74rem;color:#999">인기점수 ${score}점</span>
+            </div>
+            <div class="feat-source">${lead.source}</div>
+            <div class="feat-title">${lead.title}</div>
+            <div class="feat-desc">${desc||'기사를 클릭해 확인하세요.'}</div>
+            ${scoreBar(score,maxScore)}
+          </div>
+          <div class="feat-footer">
+            <div style="display:flex;flex-wrap:wrap;gap:4px;">
+              ${srcs.map(s=>`<span style="background:#222;border:1px solid #333;border-radius:3px;font-size:0.63rem;padding:2px 6px;color:#aaa">${s}</span>`).join('')}
+            </div>
+            <span style="font-size:0.75rem;color:#aaa">🕐 ${timeAgo(lead.pubDate)}</span>
+          </div>
+        </div>
+        <div class="feat-img">
+          ${img?`<img src="${img}" alt="" onerror="this.style.display='none'">`:``}
+          <div class="no-img" style="${img?'display:none':''}">📰</div>
+          <div class="feat-num">1</div>
+        </div>`;
+      grid.appendChild(card);
+      return;
+    }
+
+    const card = document.createElement('a');
+    card.className = 'card';
+    card.href = lead.link; card.target='_blank'; card.rel='noopener noreferrer';
+    card.innerHTML = `
+      ${img?`<img class="card-thumb" src="${img}" alt="" onerror="this.style.display='none'">`:``}
+      <div class="card-body">
+        <div class="rank-num">${idx+1}</div>
+        <div class="card-top">
+          <span class="card-source">${lead.source}</span>
+          <span class="heat-badge ${heat.cls}">${heat.label}</span>
+        </div>
+        <div class="card-title">${lead.title}</div>
+        ${scoreBar(score,maxScore)}
+        <div class="card-footer">
+          <span>🕐 ${timeAgo(lead.pubDate)}</span>
+          <span>${related.length>0?`관련 ${related.length}건 ·`:''} 점수 ${score}</span>
+        </div>
+      </div>`;
+    grid.appendChild(card);
+  });
+
+  area.appendChild(grid);
+}
+
+// FILTER TABS
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (!API_KEY) {
+      document.getElementById('apiStatus').innerHTML='<div class="api-status error">❌ 먼저 API 키를 입력하고 수집 버튼을 눌러주세요</div>';
+      return;
+    }
+    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentQ = btn.dataset.q;
+    loadCategory(currentQ);
+  });
+});
+
+document.getElementById('apiKey').addEventListener('keydown', e=>{if(e.key==='Enter')startFetch();});
+</script>
+</body>
+</html>
