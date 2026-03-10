@@ -502,6 +502,24 @@
             </div>
 
             <div class="form-group">
+                <label>🎨 이미지 스타일 선택</label>
+                <div class="emotion-selector" id="styleSelector">
+                    <button class="emotion-btn style-btn" onclick="setImageStyle('3d_only')" id="styleBtn_3d_only">
+                        🧊 전체 3D 일러스트
+                    </button>
+                    <button class="emotion-btn style-btn active" onclick="setImageStyle('3d_char_real_bg')" id="styleBtn_3d_char_real_bg">
+                        ✨ 3D 캐릭터 + 실사 배경
+                    </button>
+                    <button class="emotion-btn style-btn" onclick="setImageStyle('real_only')" id="styleBtn_real_only">
+                        📷 전체 실사 포토리얼
+                    </button>
+                </div>
+                <div class="info-box" id="styleDescription">
+                    ✨ <strong>3D 캐릭터 + 실사 배경</strong>: 인물·캐릭터는 3D 렌더링, 배경은 실제 사진처럼 포토리얼리스틱하게 생성
+                </div>
+            </div>
+
+            <div class="form-group">
                 <label>😊 감정 톤 선택</label>
                 <div class="emotion-selector">
                     <button class="emotion-btn active" onclick="setEmotion('neutral')">😐 중립</button>
@@ -593,6 +611,7 @@
 
     <script>
         let selectedEmotion = 'neutral';
+        let selectedImageStyle = '3d_char_real_bg';
         let apiKey = '';
         let characterImageBase64 = '';
         let characterImageMimeType = 'image/jpeg';
@@ -649,8 +668,21 @@
 
         function setEmotion(emotion) {
             selectedEmotion = emotion;
-            document.querySelectorAll('.emotion-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.closest('.emotion-selector').querySelectorAll('.emotion-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
+        }
+
+        const styleDescriptions = {
+            '3d_only': '🧊 <strong>전체 3D 일러스트</strong>: 캐릭터와 배경 모두 3D 디지털 일러스트 스타일로 생성',
+            '3d_char_real_bg': '✨ <strong>3D 캐릭터 + 실사 배경</strong>: 인물·캐릭터는 3D 렌더링, 배경은 실제 사진처럼 포토리얼리스틱하게 생성',
+            'real_only': '📷 <strong>전체 실사 포토리얼</strong>: 캐릭터와 배경 모두 실제 사진처럼 포토리얼리스틱하게 생성'
+        };
+
+        function setImageStyle(style) {
+            selectedImageStyle = style;
+            document.querySelectorAll('.style-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('styleBtn_' + style).classList.add('active');
+            document.getElementById('styleDescription').innerHTML = styleDescriptions[style];
         }
 
         function analyzeScript() {
@@ -783,7 +815,7 @@
         }
 
         async function analyzeCharacter() {
-            const prompt = `Analyze this image carefully for TWO purposes:
+            const prompt = `이 이미지를 분석해주세요. 이 이미지는 두 가지 용도로 사용됩니다:
 
 1. **나레이션 캐릭터** (모든 장면에 등장):
    - 외모 (얼굴, 헤어스타일, 체형, 나이대)
@@ -791,20 +823,11 @@
    - 캐릭터의 분위기와 특징
 
 2. **이미지 스타일** (모든 장면에 적용):
-   Identify the EXACT art style and output precise English keywords for image generation.
-   
-   Determine which style this image belongs to and use the matching keywords:
-   - PHOTOREALISTIC / LIVE ACTION: "photorealistic, hyperrealistic, cinematic photography, real skin texture, subsurface scattering, dramatic cinematic lighting, ultra detailed, 8k resolution, NOT cartoon, NOT illustration, NOT 3D render"
-   - SEMI-REALISTIC 3D CGI (like game cinematics): "semi-realistic 3D CGI, cinematic 3D render, realistic skin texture, ray tracing, Unreal Engine quality, NOT cartoon, NOT Pixar"
-   - 3D CARTOON / PIXAR STYLE: "3D Pixar animation style, Disney CGI render, soft rounded shapes, vibrant saturated colors, smooth cel shading, clean 3D render"
-   - WEBTOON / MANHWA: "Korean webtoon style, manhwa illustration, bold clean black outlines, flat cel shading, bright vivid colors, anime-influenced 2D art"
-   - ANIME / MANGA: "anime style illustration, manga art, cel shading, expressive large eyes, clean precise linework, Japanese animation style"
-   - 2D DIGITAL ILLUSTRATION: "2D digital illustration, clean lineart, soft gradient shading, graphic novel style, flat design"
-   
-   Also describe:
-   - Exact color palette (warm/cool/vibrant/muted/dark/pastel)
-   - Lighting style (soft/dramatic/cinematic/flat/neon)
-   - Overall mood and atmosphere
+   - 아트 스타일 (디지털 일러스트레이션, 3D, 2D, 실사, 애니메이션 등)
+   - 렌더링 방식 (픽사풍, 디즈니풍, 만화풍, 사실적 등)
+   - 색감 및 조명 (밝은/어두운, 따뜻한/차가운, 채도)
+   - 선의 굵기와 스타일
+   - 전체적인 무드와 분위기
 
 분석 결과를 다음과 같이 명확히 구분해서 작성해주세요:
 
@@ -812,7 +835,7 @@
 (캐릭터의 구체적인 특징)
 
 [이미지 스타일]
-(정확한 영어 스타일 키워드 포함, 이미지 생성 AI에 바로 사용 가능한 형태로 작성)`;
+(모든 장면에 적용할 스타일 특징)`;
 
             return await callGeminiVision(prompt);
         }
@@ -1300,7 +1323,51 @@ text = text.replace(/(\d+)(조|억|만)(?!원)/g, (match, num, unit) => {
 
         async function generateImagePrompts(characterAnalysis, scenes, language, sceneCount) {
             const isKorean = language === 'korean';
-            
+
+            // 선택된 스타일에 따라 스타일 지시문 생성
+            const styleRulesKo = {
+                '3d_only': `🎨 스타일 규칙 (모든 장면 동일):
+- 캐릭터와 배경 모두 3D 디지털 일러스트 스타일
+- 반드시 포함: "3D digital illustration, vibrant colors, smooth 3D render, cinematic lighting"`,
+
+                '3d_char_real_bg': `🎨 스타일 규칙 (매우 중요! 모든 장면 동일):
+- **인물/캐릭터**: 3D 렌더링 캐릭터 (매끄러운 3D 피부, 생동감 있는 표정, 3D 모델링된 의상)
+- **배경/환경**: 완전 실사 포토리얼리스틱 (실제 사진처럼 보이는 배경)
+- 실사 배경 위에 3D 캐릭터가 자연스럽게 합성된 느낌
+- 반드시 포함: "3D animated character in photorealistic real-world environment, smooth 3D character render, ultra-realistic background, cinematic lighting, 8K"`,
+
+                'real_only': `🎨 스타일 규칙 (모든 장면 동일):
+- 캐릭터와 배경 모두 완전 실사 포토리얼리스틱
+- 반드시 포함: "ultra-realistic photography, shot on Canon EOS R5, photorealistic, real people, cinematic lighting, 8K resolution"`
+            };
+
+            const styleRulesEn = {
+                '3d_only': `🎨 Style Rules (apply to ALL scenes):
+- Characters and backgrounds both in 3D digital illustration style
+- MUST include: "3D digital illustration, vibrant colors, smooth 3D render, cinematic lighting"`,
+
+                '3d_char_real_bg': `🎨 Style Rules (VERY IMPORTANT — apply to ALL scenes):
+- **Characters/People**: 3D rendered style (smooth 3D skin, expressive face, 3D modeled clothing)
+- **Background/Environment**: Ultra-realistic photorealistic (looks like a real photograph)
+- Result looks like 3D animated characters naturally composited into a real-world photorealistic scene
+- MUST include: "3D animated character in photorealistic real-world environment, smooth 3D character render, ultra-realistic background, cinematic lighting, 8K"`,
+
+                'real_only': `🎨 Style Rules (apply to ALL scenes):
+- Characters and backgrounds both fully photorealistic
+- MUST include: "ultra-realistic photography, shot on Canon EOS R5, photorealistic, real people, cinematic lighting, 8K resolution"`
+            };
+
+            const styleKo = styleRulesKo[selectedImageStyle];
+            const styleEn = styleRulesEn[selectedImageStyle];
+
+            const styleExampleKo = {
+                '3d_only': '3D digital illustration, vibrant colors, smooth 3D render, cinematic lighting',
+                '3d_char_real_bg': '3D animated character in photorealistic real-world environment, cinematic lighting, 8K',
+                'real_only': 'ultra-realistic photography, photorealistic, cinematic lighting, 8K resolution'
+            }[selectedImageStyle];
+
+            const styleExampleEn = styleExampleKo;
+
             const prompt = isKorean ? 
                 `다음은 나레이션 캐릭터 + 스타일 분석 결과입니다:
 ${characterAnalysis}
@@ -1340,19 +1407,18 @@ ${scenes}
   * ✅ 이미지 내 텍스트는 최대 1~3단어로 짧게
   * ✅ 브랜드/기업명은 영어로 표기 (예: Samsung, Hyundai, Apple, NVIDIA 등)
 
-🎨 스타일:
-- 모든 장면에 동일한 이미지 스타일 적용 (분석 결과의 [이미지 스타일] 참조)
+${styleKo}
 
 📝 형식 규칙:
 - 각 프롬프트는 번호로 시작 (1., 2., 3., etc.)
 - 한 줄씩, 빈 줄(\\n\\n)로 구분
 
 출력 예시:
-1. [나레이션 캐릭터 설명], [인사하는 모습], [배경], [이미지 스타일]
+1. [나레이션 캐릭터 설명], [인사하는 모습], [배경], ${styleExampleKo}
 
-2. [은행 지점 장면], [대기하는 사람들], [번호표], [이미지 스타일]
+2. [은행 지점 장면], [사람들이 대기하는 모습], ${styleExampleKo}
 
-3. [은행 창구], [직원과 고객], [서류], [이미지 스타일]` 
+3. [은행 창구], [직원과 고객이 대화], ${styleExampleKo}` 
                 : 
                 `Narrator Character + Style Analysis:
 ${characterAnalysis}
@@ -1434,20 +1500,18 @@ Create English image prompts for each scene.
   * ✅ ALL other text in the image (signs, store names, billboards, labels, banners, menus, posters, etc.) MUST be in Korean (한글) — NO English for general background text
   * 🎯 GOAL: A viewer should understand the scene from visuals ALONE, not from reading text
 
-🎨 Style:
-- Apply the same image style to all scenes (refer to [Image Style] in analysis)
-- Every scene must be DYNAMIC, COLORFUL, and CHARACTER-DRIVEN — like a movie still
+${styleEn}
 
 📝 Format:
 - Each prompt starts with a number (1., 2., 3., etc.)
 - One line per prompt, separated by blank lines (\\n\\n)
 
 Output example:
-1. [Narrator character description], [greeting pose], [background], [image style]
+1. [Narrator character description], [greeting pose], [background], ${styleExampleEn}
 
-2. [Two Korean businessmen arguing intensely in a stock trading room, screens flashing red], [image style]
+2. [Bank scene with people waiting in line], ${styleExampleEn}
 
-3. [Excited crowd of diverse characters celebrating in front of a bank building], [image style]`;
+3. [Bank teller window, employee and customer talking], ${styleExampleEn}`;
 
             return await callGeminiText(prompt);
         }
