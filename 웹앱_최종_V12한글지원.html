@@ -502,6 +502,24 @@
             </div>
 
             <div class="form-group">
+                <label>🎨 이미지 스타일 선택</label>
+                <div class="emotion-selector" id="styleSelector">
+                    <button class="emotion-btn style-btn" onclick="setImageStyle('3d_only')" id="styleBtn_3d_only">
+                        🧊 전체 3D 일러스트
+                    </button>
+                    <button class="emotion-btn style-btn active" onclick="setImageStyle('3d_char_real_bg')" id="styleBtn_3d_char_real_bg">
+                        ✨ 3D 캐릭터 + 실사 배경
+                    </button>
+                    <button class="emotion-btn style-btn" onclick="setImageStyle('real_only')" id="styleBtn_real_only">
+                        📷 전체 실사 포토리얼
+                    </button>
+                </div>
+                <div class="info-box" id="styleDescription">
+                    ✨ <strong>3D 캐릭터 + 실사 배경</strong>: 인물·캐릭터는 3D 렌더링, 배경은 실제 사진처럼 포토리얼리스틱하게 생성
+                </div>
+            </div>
+
+            <div class="form-group">
                 <label>😊 감정 톤 선택</label>
                 <div class="emotion-selector">
                     <button class="emotion-btn active" onclick="setEmotion('neutral')">😐 중립</button>
@@ -593,6 +611,7 @@
 
     <script>
         let selectedEmotion = 'neutral';
+        let selectedImageStyle = '3d_char_real_bg';
         let apiKey = '';
         let characterImageBase64 = '';
         let characterImageMimeType = 'image/jpeg';
@@ -649,8 +668,21 @@
 
         function setEmotion(emotion) {
             selectedEmotion = emotion;
-            document.querySelectorAll('.emotion-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.closest('.emotion-selector').querySelectorAll('.emotion-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
+        }
+
+        const styleDescriptions = {
+            '3d_only': '🧊 <strong>전체 3D 일러스트</strong>: 캐릭터와 배경 모두 3D 디지털 일러스트 스타일로 생성',
+            '3d_char_real_bg': '✨ <strong>3D 캐릭터 + 실사 배경</strong>: 인물·캐릭터는 3D 렌더링, 배경은 실제 사진처럼 포토리얼리스틱하게 생성',
+            'real_only': '📷 <strong>전체 실사 포토리얼</strong>: 캐릭터와 배경 모두 실제 사진처럼 포토리얼리스틱하게 생성'
+        };
+
+        function setImageStyle(style) {
+            selectedImageStyle = style;
+            document.querySelectorAll('.style-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('styleBtn_' + style).classList.add('active');
+            document.getElementById('styleDescription').innerHTML = styleDescriptions[style];
         }
 
         function analyzeScript() {
@@ -1291,7 +1323,51 @@ text = text.replace(/(\d+)(조|억|만)(?!원)/g, (match, num, unit) => {
 
         async function generateImagePrompts(characterAnalysis, scenes, language, sceneCount) {
             const isKorean = language === 'korean';
-            
+
+            // 선택된 스타일에 따라 스타일 지시문 생성
+            const styleRulesKo = {
+                '3d_only': `🎨 스타일 규칙 (모든 장면 동일):
+- 캐릭터와 배경 모두 3D 디지털 일러스트 스타일
+- 반드시 포함: "3D digital illustration, vibrant colors, smooth 3D render, cinematic lighting"`,
+
+                '3d_char_real_bg': `🎨 스타일 규칙 (매우 중요! 모든 장면 동일):
+- **인물/캐릭터**: 3D 렌더링 캐릭터 (매끄러운 3D 피부, 생동감 있는 표정, 3D 모델링된 의상)
+- **배경/환경**: 완전 실사 포토리얼리스틱 (실제 사진처럼 보이는 배경)
+- 실사 배경 위에 3D 캐릭터가 자연스럽게 합성된 느낌
+- 반드시 포함: "3D animated character in photorealistic real-world environment, smooth 3D character render, ultra-realistic background, cinematic lighting, 8K"`,
+
+                'real_only': `🎨 스타일 규칙 (모든 장면 동일):
+- 캐릭터와 배경 모두 완전 실사 포토리얼리스틱
+- 반드시 포함: "ultra-realistic photography, shot on Canon EOS R5, photorealistic, real people, cinematic lighting, 8K resolution"`
+            };
+
+            const styleRulesEn = {
+                '3d_only': `🎨 Style Rules (apply to ALL scenes):
+- Characters and backgrounds both in 3D digital illustration style
+- MUST include: "3D digital illustration, vibrant colors, smooth 3D render, cinematic lighting"`,
+
+                '3d_char_real_bg': `🎨 Style Rules (VERY IMPORTANT — apply to ALL scenes):
+- **Characters/People**: 3D rendered style (smooth 3D skin, expressive face, 3D modeled clothing)
+- **Background/Environment**: Ultra-realistic photorealistic (looks like a real photograph)
+- Result looks like 3D animated characters naturally composited into a real-world photorealistic scene
+- MUST include: "3D animated character in photorealistic real-world environment, smooth 3D character render, ultra-realistic background, cinematic lighting, 8K"`,
+
+                'real_only': `🎨 Style Rules (apply to ALL scenes):
+- Characters and backgrounds both fully photorealistic
+- MUST include: "ultra-realistic photography, shot on Canon EOS R5, photorealistic, real people, cinematic lighting, 8K resolution"`
+            };
+
+            const styleKo = styleRulesKo[selectedImageStyle];
+            const styleEn = styleRulesEn[selectedImageStyle];
+
+            const styleExampleKo = {
+                '3d_only': '3D digital illustration, vibrant colors, smooth 3D render, cinematic lighting',
+                '3d_char_real_bg': '3D animated character in photorealistic real-world environment, cinematic lighting, 8K',
+                'real_only': 'ultra-realistic photography, photorealistic, cinematic lighting, 8K resolution'
+            }[selectedImageStyle];
+
+            const styleExampleEn = styleExampleKo;
+
             const prompt = isKorean ? 
                 `다음은 나레이션 캐릭터 + 스타일 분석 결과입니다:
 ${characterAnalysis}
@@ -1331,19 +1407,18 @@ ${scenes}
   * ✅ 이미지 내 텍스트는 최대 1~3단어로 짧게
   * ✅ 브랜드/기업명은 영어로 표기 (예: Samsung, Hyundai, Apple, NVIDIA 등)
 
-🎨 스타일:
-- 모든 장면에 동일한 이미지 스타일 적용 (분석 결과의 [이미지 스타일] 참조)
+${styleKo}
 
 📝 형식 규칙:
 - 각 프롬프트는 번호로 시작 (1., 2., 3., etc.)
 - 한 줄씩, 빈 줄(\\n\\n)로 구분
 
 출력 예시:
-1. [나레이션 캐릭터 설명], [인사하는 모습], [배경], [이미지 스타일]
+1. [나레이션 캐릭터 설명], [인사하는 모습], [배경], ${styleExampleKo}
 
-2. [은행 지점 장면], [대기하는 사람들], [번호표], [이미지 스타일]
+2. [은행 지점 장면], [사람들이 대기하는 모습], ${styleExampleKo}
 
-3. [은행 창구], [직원과 고객], [서류], [이미지 스타일]` 
+3. [은행 창구], [직원과 고객이 대화], ${styleExampleKo}` 
                 : 
                 `Narrator Character + Style Analysis:
 ${characterAnalysis}
@@ -1414,31 +1489,36 @@ Create English image prompts for each scene.
   * Chinese content → Chinese-looking characters, Chinese buildings/streets/backgrounds
   * Other countries → Match that country's appearance and backgrounds accordingly
 
-- **Text in image rules** (STRICTLY MINIMIZED):
+- **Text in image rules** (NATURAL & CONTEXTUAL):
   * 🚫 NEVER put narration script sentences or long phrases as text in the image
   * 🚫 Do NOT display what the narrator is saying as on-screen text
-  * 🚫 AVOID text in images as much as possible — visuals and characters tell the story
-  * ✅ ONLY if absolutely necessary: brand logos or 1 short word max (e.g. "NASDAQ", "Samsung")
+  * ✅ ACTIVELY USE natural Korean text that fits the scene topic — make the scene feel real and immersive
+  * ✅ Examples by scene type:
+    - Real estate scene → 「매매 5억」「전세 2억」「월세 50/50」on signs or banners
+    - Restaurant/cafe scene → 「김치찌개 7,000원」「아메리카노 4,500원」on menus or boards
+    - News/broadcast scene → 「긴급속보」「금리 인상」「주가 폭락」on news banners
+    - Bank/finance scene → 「대출금리 4.5%」「예금금리 2.1%」on boards or screens
+    - Shopping scene → 「50% 할인」「오늘만 특가」on price tags or banners
+    - Office/work scene → 「기획안」「보고서」「3분기 실적」on documents or screens
+    - Street scene → 「편의점」「카페」「부동산」on shop signs
   * ✅ Brand/logo names keep English as-is: Samsung, Hyundai, Apple, NVIDIA, Nike, etc.
   * ✅ General symbols and units stay as-is: %, °C, km, kg, etc.
   * ✅ Currency amounts use Korean style: 1,000,000원 / 100달러 / 50유로 (NOT $100 or ¥500)
-  * ✅ ALL other text in the image (signs, store names, billboards, labels, banners, menus, posters, etc.) MUST be in Korean (한글) — NO English for general background text
-  * 🎯 GOAL: A viewer should understand the scene from visuals ALONE, not from reading text
+  * ✅ ALL text in the image (signs, store names, billboards, labels, banners, menus, posters, etc.) MUST be in Korean (한글) — NO English for general background text
+  * 🎯 GOAL: Natural Korean text throughout the scene makes it feel authentic and contextually rich
 
-🎨 Style:
-- Apply the same image style to all scenes (refer to [Image Style] in analysis)
-- Every scene must be DYNAMIC, COLORFUL, and CHARACTER-DRIVEN — like a movie still
+${styleEn}
 
 📝 Format:
 - Each prompt starts with a number (1., 2., 3., etc.)
 - One line per prompt, separated by blank lines (\\n\\n)
 
 Output example:
-1. [Narrator character description], [greeting pose], [background], [image style]
+1. [Narrator character description], [greeting pose], [background], ${styleExampleEn}
 
-2. [Two Korean businessmen arguing intensely in a stock trading room, screens flashing red], [image style]
+2. [Bank scene with people waiting in line], ${styleExampleEn}
 
-3. [Excited crowd of diverse characters celebrating in front of a bank building], [image style]`;
+3. [Bank teller window, employee and customer talking], ${styleExampleEn}`;
 
             return await callGeminiText(prompt);
         }
