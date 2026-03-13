@@ -163,12 +163,12 @@ main{max-width:1200px;margin:0 auto;padding:24px 32px 60px;}
   <div class="setup-inner">
     <div class="setup-title">
       <span>🔑 NewsAPI 키</span>
-      newsapi.org 에서 발급받은 API 키를 입력하세요
+      newsapi.org 에서 발급받은 API 키를 입력하세요 (없어도 Google RSS로 자동 수집됩니다)
     </div>
     <div class="setup-grid">
       <div class="field">
-        <label>NEWSAPI KEY</label>
-        <input type="password" id="apiKey" placeholder="발급받은 API 키 입력..." />
+        <label>NEWSAPI KEY (선택사항)</label>
+        <input type="password" id="apiKey" placeholder="API 키 입력... (없으면 비워두세요 — Google RSS 자동 사용)" />
       </div>
       <button class="start-btn" id="startBtn" onclick="startFetch()">🔥 수집 / 키변경</button>
     </div>
@@ -178,12 +178,18 @@ main{max-width:1200px;margin:0 auto;padding:24px 32px 60px;}
 
 <!-- FILTER -->
 <div class="filter-bar">
-  <button class="filter-btn active" data-q="한국 뉴스" data-label="전체">🗞 전체</button>
-  <button class="filter-btn" data-q="정치 국회 대통령" data-label="정치">🏛 정치</button>
-  <button class="filter-btn" data-q="경제 주식 환율 금융" data-label="경제">💰 경제</button>
-  <button class="filter-btn" data-q="사건 범죄 사고 경찰" data-label="사건사고">🚨 사건사고</button>
-  <button class="filter-btn" data-q="국제 세계 해외" data-label="세계">🌏 세계</button>
-  <button class="filter-btn" data-q="IT 인공지능 반도체 기술" data-label="IT">💻 IT</button>
+  <button class="filter-btn active" data-q="전체">🗞 전체</button>
+  <button class="filter-btn" data-q="핫이슈">🔥 핫이슈</button>
+  <button class="filter-btn" data-q="정치">🏛 정치</button>
+  <button class="filter-btn" data-q="경제">💰 경제</button>
+  <button class="filter-btn" data-q="부동산">🏠 부동산</button>
+  <button class="filter-btn" data-q="사건사고">🚨 사건사고</button>
+  <button class="filter-btn" data-q="사회">👥 사회</button>
+  <button class="filter-btn" data-q="방산">⚔️ 방산</button>
+  <button class="filter-btn" data-q="세계">🌏 세계</button>
+  <button class="filter-btn" data-q="IT">💻 IT</button>
+  <button class="filter-btn" data-q="연예">🎬 연예</button>
+  <button class="filter-btn" data-q="스포츠">⚽ 스포츠</button>
 </div>
 
 <!-- TICKER -->
@@ -205,8 +211,8 @@ main{max-width:1200px;margin:0 auto;padding:24px 32px 60px;}
 <main>
   <div class="welcome" id="welcomeBox">
     <h2>오늘의 핫뉴스만 골라드려요</h2>
-    <p>NewsAPI로 오늘 기사를 수집하고<br>키워드 빈도 + 최신성으로 점수를 매겨<br><strong>상위 20% 핫한 기사만</strong> 보여드려요</p>
-    <p style="margin-top:12px;font-size:0.8rem;">위에 API 키 입력 후 <strong>🔥 뉴스 수집</strong> 버튼을 누르세요</p>
+    <p>Google News RSS로 오늘 기사를 수집하고<br>키워드 빈도 + 최신성으로 점수를 매겨<br><strong>상위 20% 핫한 기사만</strong> 보여드려요</p>
+    <p style="margin-top:12px;font-size:0.8rem;">페이지 로드 시 자동 수집됩니다. 카테고리 탭을 클릭하세요!</p>
     <div class="arrow">☝️</div>
   </div>
 
@@ -223,94 +229,163 @@ main{max-width:1200px;margin:0 auto;padding:24px 32px 60px;}
 <script>
 const NEWSAPI = 'https://newsapi.org/v2';
 
-// 카테고리별 쿼리 목록
-const CAT_QUERIES = {
-  '한국 뉴스':           ['한국','속보','사건','정치','경제','사회','연예','스포츠'],
-  '정치 국회 대통령':    ['정치','국회','대통령','여야','정부'],
-  '경제 주식 환율 금융': ['경제','주식','환율','금리','부동산'],
-  '사건 범죄 사고 경찰': ['사건','범죄','사고','경찰','화재'],
-  '국제 세계 해외':      ['국제','미국','중국','전쟁','해외'],
-  '연예 아이돌 드라마':  ['연예','아이돌','드라마','케이팝','배우'],
-  '스포츠 야구 축구':    ['스포츠','야구','축구','농구','손흥민'],
-  'IT 인공지능 반도체 기술': ['AI','반도체','인공지능','IT','스타트업'],
+// ── 프록시 목록 (하나 막히면 다음꺼 자동 사용) ──
+const PROXIES = [
+  'https://corsproxy.io/?',
+  'https://api.allorigins.win/raw?url=',
+  'https://thingproxy.freeboard.io/fetch/',
+];
+let proxyIdx = 0;
+
+function getProxy() { return PROXIES[proxyIdx % PROXIES.length]; }
+
+async function fetchWithProxy(url) {
+  const maxTry = PROXIES.length;
+  for (let i = 0; i < maxTry; i++) {
+    const proxy = PROXIES[(proxyIdx + i) % PROXIES.length];
+    try {
+      const res = await fetch(`${proxy}${encodeURIComponent(url)}`, {signal: AbortSignal.timeout(12000)});
+      if (res.ok) {
+        proxyIdx = (proxyIdx + i) % PROXIES.length; // 성공한 프록시 고정
+        return await res.text();
+      }
+    } catch(e) { /* 다음 프록시 시도 */ }
+  }
+  return null;
+}
+
+// ── RSS 쿼리 목록 (카테고리별) ──
+const RSS_QUERIES = {
+  '전체': [
+    'https://news.google.com/rss?hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=속보&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=사건+사고+오늘&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=부동산+아파트+전세&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=경제+물가+금리&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=정치+국회+대통령&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=살인+폭행+체포+검거&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=화재+교통사고+사망&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=AI+반도체+삼성+SK&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=미국+트럼프+관세+무역&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=연예+아이돌+드라마&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=스포츠+야구+축구&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=방산+국방+군사&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=사회+복지+교육&hl=ko&gl=KR&ceid=KR:ko',
+  ],
+  '핫이슈': [
+    'https://news.google.com/rss?hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=속보+긴급&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=이슈+논란+화제&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=충격+경악+발표&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=오늘+핫+인기+화제&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=SNS+커뮤니티+누리꾼&hl=ko&gl=KR&ceid=KR:ko',
+  ],
+  '정치': [
+    'https://news.google.com/rss/search?q=정치+국회&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=대통령+정부+청와대&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=여당+야당+선거+공천&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=탄핵+헌법재판소+법원&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=민주당+국민의힘+정책&hl=ko&gl=KR&ceid=KR:ko',
+  ],
+  '경제': [
+    'https://news.google.com/rss/search?q=경제+주식+코스피&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=환율+달러+금리+한국은행&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=물가+인플레이션+소비+경기&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=기업+실적+투자+증시&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=코스닥+나스닥+주가&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=무역+수출+관세+경상수지&hl=ko&gl=KR&ceid=KR:ko',
+  ],
+  '부동산': [
+    'https://news.google.com/rss/search?q=부동산+아파트&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=전세+월세+임대차&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=청약+분양+입주+재건축&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=집값+주택+부동산정책&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=강남+용산+서울+아파트+상승&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=DSR+LTV+대출규제+금융위&hl=ko&gl=KR&ceid=KR:ko',
+  ],
+  '사건사고': [
+    'https://news.google.com/rss/search?q=사건+범죄+경찰+검거&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=살인+폭행+강도+성범죄&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=화재+교통사고+추락+사망&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=촉법소년+마약+보이스피싱&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=검찰+구속+기소+재판&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=실종+납치+스토킹+피해&hl=ko&gl=KR&ceid=KR:ko',
+  ],
+  '사회': [
+    'https://news.google.com/rss/search?q=사회+복지+의료+건강&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=교육+학교+대학+입시&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=취업+실업+노동+임금+파업&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=저출생+고령화+인구+육아&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=환경+기후+재난+날씨&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=의사+병원+의료+파업+건강보험&hl=ko&gl=KR&ceid=KR:ko',
+  ],
+  '방산': [
+    'https://news.google.com/rss/search?q=방산+국방+군사+무기&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=K방산+수출+방위산업&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=한국항공우주+한화+LIG넥스원+현대로템&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=K2전차+K9자주포+FA50+천궁&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=북한+미사일+도발+군사+안보&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=NATO+미군+주한미군+한미동맹&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=전쟁+무기+군비+방어+드론&hl=ko&gl=KR&ceid=KR:ko',
+  ],
+  '세계': [
+    'https://news.google.com/rss/search?q=국제+세계+미국&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=트럼프+관세+무역전쟁&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=전쟁+분쟁+우크라이나+중동&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=중국+일본+북한+외교&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=EU+러시아+이스라엘+팔레스타인&hl=ko&gl=KR&ceid=KR:ko',
+  ],
+  'IT': [
+    'https://news.google.com/rss/search?q=AI+인공지능+챗GPT+클로드&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=반도체+삼성+SK하이닉스+HBM&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=스타트업+IT+앱+서비스+플랫폼&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=애플+구글+메타+테슬라+엔비디아&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=로봇+드론+우주+자율주행&hl=ko&gl=KR&ceid=KR:ko',
+  ],
+  '연예': [
+    'https://news.google.com/rss/search?q=연예+아이돌+드라마&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=케이팝+BTS+블랙핑크+뉴진스&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=영화+드라마+넷플릭스+OTT&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=배우+가수+연예인+열애+결혼&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=음원+차트+컴백+데뷔+콘서트&hl=ko&gl=KR&ceid=KR:ko',
+  ],
+  '스포츠': [
+    'https://news.google.com/rss/search?q=스포츠+야구+KBO&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=축구+손흥민+이강인+K리그&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=농구+배구+골프+테니스&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=올림픽+월드컵+국가대표+메달&hl=ko&gl=KR&ceid=KR:ko',
+    'https://news.google.com/rss/search?q=MLB+NBA+EPL+리오넬메시&hl=ko&gl=KR&ceid=KR:ko',
+  ],
 };
 
 let API_KEY = '';
-let currentQ = '한국 뉴스';
+let currentQ = '전체';
 let allArticles = [];
 let hotClusters = [];
+let useRSS = true; // 기본값: RSS 모드 (파일로 열어도 바로 작동)
 
 // 날짜
 document.getElementById('dateStr').textContent =
   new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
 
-// 저장된 키 불러오기 + 자동 수집
+// 페이지 로드 시 자동 수집
 window.onload = () => {
   const saved = localStorage.getItem('newsapi_key');
   if (saved) {
     API_KEY = saved;
     document.getElementById('apiKey').value = saved;
-    document.getElementById('apiStatus').innerHTML =
-      '<div class="api-status ok">✅ 저장된 키로 자동 수집 시작!</div>';
-    loadCategory(currentQ); // 자동 수집 시작
   }
+  // API 키 유무 상관없이 자동 수집 시작
+  document.getElementById('apiStatus').innerHTML =
+    '<div class="api-status ok">🚀 Google News RSS로 자동 수집 시작!</div>';
+  loadCategory(currentQ);
 };
 
-// ── FETCH ──
-const RSS_PROXY = 'https://corsproxy.io/?';
-let useRSS = false; // NewsAPI 한도 초과시 true로 전환
-
-// Google News RSS - 카테고리별 여러 쿼리
-const RSS_QUERIES = {
-  '한국 뉴스': [
-    'https://news.google.com/rss?hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=속보&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=사건+사고+오늘&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=부동산+아파트+전세&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=촉법소년+청소년+범죄&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=경제+물가+금리&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=정치+국회+대통령&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=살인+폭행+체포+검거&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=화재+교통사고+사망&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=취업+실업+노동+임금&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=AI+반도체+삼성+SK&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=미국+트럼프+관세+무역&hl=ko&gl=KR&ceid=KR:ko',
-  ],
-  '정치 국회 대통령': [
-    'https://news.google.com/rss/search?q=정치+국회&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=대통령+청와대+정부&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=여당+야당+선거&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=탄핵+헌법재판소&hl=ko&gl=KR&ceid=KR:ko',
-  ],
-  '경제 주식 환율 금융': [
-    'https://news.google.com/rss/search?q=경제+주식+코스피&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=환율+달러+금리+한국은행&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=부동산+아파트+전세+청약&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=물가+인플레이션+소비&hl=ko&gl=KR&ceid=KR:ko',
-  ],
-  '사건 범죄 사고 경찰': [
-    'https://news.google.com/rss/search?q=사건+범죄+경찰+검거&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=살인+폭행+강도+성범죄&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=화재+교통사고+추락+사망&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=촉법소년+마약+보이스피싱&hl=ko&gl=KR&ceid=KR:ko',
-  ],
-  '국제 세계 해외': [
-    'https://news.google.com/rss/search?q=국제+세계+미국&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=트럼프+관세+무역전쟁&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=전쟁+분쟁+우크라이나&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=중국+일본+북한+외교&hl=ko&gl=KR&ceid=KR:ko',
-  ],
-  'IT 인공지능 반도체 기술': [
-    'https://news.google.com/rss/search?q=AI+인공지능+챗GPT&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=반도체+삼성+SK하이닉스&hl=ko&gl=KR&ceid=KR:ko',
-    'https://news.google.com/rss/search?q=스타트업+IT+앱+서비스&hl=ko&gl=KR&ceid=KR:ko',
-  ],
-};
-
+// ── RSS 파싱 ──
 async function fetchOneRSS(rssUrl) {
   try {
-    const res = await fetch(`${RSS_PROXY}${encodeURIComponent(rssUrl)}`, {signal: AbortSignal.timeout(10000)});
-    const text = await res.text();
+    const text = await fetchWithProxy(rssUrl);
+    if (!text) return [];
     const parser = new DOMParser();
     const xml = parser.parseFromString(text, 'text/xml');
     const items = [...xml.querySelectorAll('item')];
@@ -319,58 +394,75 @@ async function fetchOneRSS(rssUrl) {
       const get = tag => item.querySelector(tag)?.textContent?.trim() || '';
       const enclosure = item.querySelector('enclosure');
       const thumb = enclosure?.getAttribute('url') || null;
+      // media:content 에서 썸네일 추출 시도
+      const mediaCnt = item.getElementsByTagNameNS('*','content')[0];
+      const mediaThumb = mediaCnt?.getAttribute('url') || null;
       return {
-        title: get('title').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>'),
+        title: get('title').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/<!\[CDATA\[|\]\]>/g,'').trim(),
         link: get('link') || get('guid'),
-        description: get('description').replace(/<[^>]*>/g,'').trim(),
+        description: get('description').replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').trim(),
         pubDate: get('pubDate') || new Date().toISOString(),
-        thumbnail: thumb,
-        source: get('source') || 'Google News',
+        thumbnail: thumb || mediaThumb,
+        source: get('source') || extractSourceFromTitle(get('title')),
       };
     }).filter(a => {
-      if (!a.title) return false;
-      // 오늘 or 어제(자정 이후 12시간) 기사 포함
+      if (!a.title || a.title.length < 4) return false;
       const pub = new Date(a.pubDate);
-      const now = new Date();
-      const diffH = (now - pub) / 3600000;
-      return diffH <= 24; // 24시간 이내
+      const diffH = (Date.now() - pub) / 3600000;
+      return diffH <= 48; // 48시간 이내 (더 많은 기사)
     });
   } catch(e) {
     return [];
   }
 }
 
+function extractSourceFromTitle(title) {
+  // Google RSS 제목 끝에 "- 언론사명" 패턴 추출
+  const m = title.match(/ - ([^-]+)$/);
+  return m ? m[1].trim() : 'Google News';
+}
+
 async function fetchRSS(q) {
-  const urls = RSS_QUERIES[q] || RSS_QUERIES['한국 뉴스'];
-  // 모든 URL 병렬 수집
-  const all = await Promise.all(urls.map(url => fetchOneRSS(url)));
-  const merged = all.flat();
-  // 중복 제거 (제목 앞 10글자 기준)
+  const urls = RSS_QUERIES[q] || RSS_QUERIES['전체'];
+  const stepEl = document.getElementById('loadStep');
+  const progressEl = document.getElementById('progressFill');
+  const results = [];
+
+  // 병렬로 수집 (속도 향상)
+  const batches = [];
+  for (let i = 0; i < urls.length; i += 4) {
+    batches.push(urls.slice(i, i + 4));
+  }
+
+  let done = 0;
+  for (const batch of batches) {
+    const items = await Promise.all(batch.map(url => fetchOneRSS(url)));
+    items.flat().forEach(a => results.push(a));
+    done += batch.length;
+    const pct = Math.round((done / urls.length) * 80) + 10;
+    progressEl.style.width = `${pct}%`;
+    stepEl.textContent = `${results.length}건 수집 중... (${done}/${urls.length} 소스)`;
+  }
+
+  // 중복 제거 (제목 앞 12글자 기준)
   const seen = new Set();
-  return merged.filter(a => {
-    const k = a.title.slice(0,10);
+  return results.filter(a => {
+    const k = a.title.slice(0, 12);
     if (seen.has(k)) return false;
     seen.add(k); return true;
   });
 }
 
-async function fetchNews(query) {
-  // RSS 모드면 바로 RSS
-  if (useRSS) return fetchRSS(currentQ);
-
+async function fetchNewsAPI(query) {
   const today = new Date().toISOString().split('T')[0];
-  const url = `${NEWSAPI}/everything?q=${encodeURIComponent(query)}&language=ko&from=${today}&sortBy=popularity&pageSize=20&apiKey=${API_KEY}`;
+  const url = `${NEWSAPI}/everything?q=${encodeURIComponent(query)}&language=ko&from=${today}&sortBy=popularity&pageSize=30&apiKey=${API_KEY}`;
   try {
     const res = await fetch(url, {signal: AbortSignal.timeout(10000)});
     const data = await res.json();
     if (data.status === 'error') {
-      // 한도 초과 또는 키 오류 → RSS 자동 전환
       if (data.code === 'rateLimited' || data.code === 'maximumResultsReached' || data.message?.includes('quota') || data.message?.includes('limit')) {
-        console.warn('NewsAPI 한도 초과 → Google News RSS로 자동 전환');
         useRSS = true;
-        document.getElementById('apiStatus').innerHTML =
-          '<div class="api-status ok">⚠️ NewsAPI 한도 초과 → Google News RSS로 자동 전환됨 (실시간 무료)</div>';
-        return fetchRSS(currentQ);
+        return null; // RSS로 전환 신호
       }
       throw new Error(data.message);
     }
@@ -381,23 +473,15 @@ async function fetchNews(query) {
       pubDate: a.publishedAt,
       thumbnail: a.urlToImage,
       source: a.source?.name || '',
-      _query: query,
     })).filter(a => a.title && a.title !== '[Removed]');
   } catch(e) {
-    console.warn('NewsAPI 실패:', query, e.message);
-    // 네트워크 오류도 RSS로 fallback
-    if (!useRSS) {
-      useRSS = true;
-      document.getElementById('apiStatus').innerHTML =
-        '<div class="api-status ok">⚠️ NewsAPI 오류 → Google News RSS로 자동 전환됨</div>';
-      return fetchRSS(currentQ);
-    }
-    return [{_error: e.message}];
+    useRSS = true;
+    return null;
   }
 }
 
 // ── SCORING ──
-const STOP = new Set(['이','가','은','는','을','를','에','와','과','의','로','도','만','에서','하는','있는','된','한','및','등','이번','지난','오늘','어제','위해','통해','대한','관련','대해','따라','이후','앞서']);
+const STOP = new Set(['이','가','은','는','을','를','에','와','과','의','로','도','만','에서','하는','있는','된','한','및','등','이번','지난','오늘','어제','위해','통해','대한','관련','대해','따라','이후','앞서','위한','되는','있어','통한','한국']);
 
 function kws(title) {
   return title.replace(/[^\uAC00-\uD7A3a-zA-Z0-9\s]/g,' ')
@@ -412,7 +496,7 @@ function scoreAndCluster(articles) {
     const ws = kws(a.title);
     const kwScore = ws.length ? ws.reduce((s,k)=>s+(freq[k]||0),0)/ws.length : 0;
     const ageH = (Date.now()-new Date(a.pubDate))/3600000;
-    const recency = ageH<2?40:ageH<6?25:ageH<12?10:0;
+    const recency = ageH<1?50:ageH<3?40:ageH<6?25:ageH<12?10:ageH<24?5:0;
     a._kws = ws;
     a._score = Math.round(kwScore*12+recency);
   });
@@ -439,12 +523,14 @@ function scoreAndCluster(articles) {
 
 // ── START ──
 async function startFetch() {
-  API_KEY = document.getElementById('apiKey').value.trim();
-  if (!API_KEY) {
-    document.getElementById('apiStatus').innerHTML = '<div class="api-status error">❌ API 키를 입력하세요</div>';
-    return;
+  const inputKey = document.getElementById('apiKey').value.trim();
+  if (inputKey) {
+    API_KEY = inputKey;
+    localStorage.setItem('newsapi_key', API_KEY);
+    useRSS = false; // API 키 있으면 NewsAPI 먼저 시도
+  } else {
+    useRSS = true; // 키 없으면 RSS 바로 사용
   }
-  localStorage.setItem('newsapi_key', API_KEY);
   loadCategory(currentQ);
 }
 
@@ -456,50 +542,67 @@ async function loadCategory(q) {
   document.getElementById('statsRow').style.display = 'none';
   document.getElementById('startBtn').disabled = true;
 
-  // 로컬 파일(file://)이면 RSS 바로 사용
-  if (location.protocol === 'file:' || useRSS) useRSS = true;
-
   const stepEl = document.getElementById('loadStep');
   const progressEl = document.getElementById('progressFill');
-  const results = [];
-  let firstError = null;
+  progressEl.style.width = '5%';
 
-  if (useRSS) {
-    const urlCount = (RSS_QUERIES[q] || RSS_QUERIES['한국 뉴스']).length;
-    stepEl.textContent = `Google News RSS ${urlCount}개 소스 병렬 수집 중...`;
-    progressEl.style.width = '30%';
-    const items = await fetchRSS(q);
-    results.push(...items);
-    progressEl.style.width = '100%';
-    stepEl.textContent = `${items.length}건 수집 완료!`;
-  } else {
-    const queries = CAT_QUERIES[q] || ['한국'];
-    for (let i=0; i<queries.length; i++) {
-      stepEl.textContent = `"${queries[i]}" 검색 중... (${i+1}/${queries.length})`;
-      progressEl.style.width = `${Math.round(((i+1)/queries.length)*100)}%`;
-      const items = await fetchNews(queries[i]);
-      items.forEach(item => {
-        if (item._error) { if(!firstError) firstError=item._error; }
-        else results.push(item);
-      });
-      await new Promise(r=>setTimeout(r,200));
+  let results = [];
+
+  // API 키가 있고 RSS 모드가 아닐 때만 NewsAPI 시도
+  if (API_KEY && !useRSS && location.protocol !== 'file:') {
+    const catQueryMap = {
+      '전체': ['한국','속보','사건','정치','경제','사회','연예','스포츠'],
+      '핫이슈': ['이슈','논란','화제','속보'],
+      '정치': ['정치','국회','대통령','여야','정부'],
+      '경제': ['경제','주식','환율','금리','부동산'],
+      '부동산': ['부동산','아파트','전세','청약','집값'],
+      '사건사고': ['사건','범죄','사고','경찰','화재'],
+      '사회': ['사회','교육','의료','노동','환경'],
+      '방산': ['방산','국방','K방산','군사','무기'],
+      '세계': ['국제','미국','트럼프','전쟁','중국'],
+      'IT': ['AI','반도체','인공지능','IT','스타트업'],
+      '연예': ['연예','아이돌','드라마','케이팝','영화'],
+      '스포츠': ['스포츠','야구','축구','농구','올림픽'],
+    };
+    const queries = catQueryMap[q] || ['한국'];
+    stepEl.textContent = 'NewsAPI 수집 중...';
+    for (let i = 0; i < queries.length; i++) {
+      progressEl.style.width = `${Math.round(((i+1)/queries.length)*70)}%`;
+      const items = await fetchNewsAPI(queries[i]);
+      if (items === null) {
+        // RSS로 전환됨
+        document.getElementById('apiStatus').innerHTML =
+          '<div class="api-status ok">⚠️ NewsAPI 한도 초과 → Google News RSS로 자동 전환!</div>';
+        break;
+      }
+      results.push(...items);
+      await new Promise(r=>setTimeout(r,150));
     }
   }
 
+  // RSS 모드 (기본 또는 fallback)
+  if (useRSS || results.length === 0) {
+    useRSS = true;
+    stepEl.textContent = 'Google News RSS 수집 중...';
+    const rssItems = await fetchRSS(q);
+    results = rssItems;
+  }
+
   document.getElementById('startBtn').disabled = false;
+  progressEl.style.width = '95%';
 
   if (!results.length) {
     document.getElementById('loadingBox').style.display = 'none';
     document.getElementById('newsArea').innerHTML = `
       <div class="empty">
         <span>⚠️</span>
-        <p style="margin-bottom:8px">❌ ${firstError || '결과 없음'}</p>
-        <p style="font-size:0.8rem;color:#bbb;">API 키를 다시 확인해주세요 — <a href="https://newsapi.org/account" target="_blank" style="color:var(--hot)">newsapi.org/account</a></p>
+        <p style="margin-bottom:8px">❌ 결과 없음 — 잠시 후 다시 시도해주세요</p>
+        <p style="font-size:0.8rem;color:#bbb;">네트워크 연결을 확인하거나 새로고침 해보세요</p>
       </div>`;
     return;
   }
 
-  // dedup
+  // 중복 최종 제거
   const seen = new Set();
   const unique = results.filter(a=>{
     const k=a.title.slice(0,12); if(seen.has(k)) return false; seen.add(k); return true;
@@ -513,12 +616,13 @@ async function loadCategory(q) {
   const top20 = Math.max(1, Math.ceil(clusters.length*0.2));
   hotClusters = clusters.slice(0, top20);
 
+  progressEl.style.width = '100%';
   document.getElementById('totalCount').textContent = unique.length;
   document.getElementById('showCount').textContent = hotClusters.length;
   document.getElementById('updateTime').textContent = `🕐 ${new Date().toLocaleTimeString('ko-KR')}`;
   document.getElementById('statsRow').style.display = 'flex';
   document.getElementById('tickerText').textContent =
-    hotClusters.slice(0,8).map((c,i)=>`${i+1}위  ${c.lead.title}`).join('   ●   ');
+    hotClusters.slice(0,10).map((c,i)=>`${i+1}위  ${c.lead.title}`).join('   ●   ');
   document.getElementById('tickerWrap').style.display = 'flex';
   document.getElementById('loadingBox').style.display = 'none';
   document.getElementById('apiStatus').innerHTML =
@@ -632,10 +736,6 @@ function renderCards(clusters) {
 // FILTER TABS
 document.querySelectorAll('.filter-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    if (!API_KEY) {
-      document.getElementById('apiStatus').innerHTML='<div class="api-status error">❌ 먼저 API 키를 입력하고 수집 버튼을 눌러주세요</div>';
-      return;
-    }
     document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     currentQ = btn.dataset.q;
